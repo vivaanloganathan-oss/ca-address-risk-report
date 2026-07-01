@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>California Address Risk &amp; Livability Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="styles.css?v=6"/>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="brand"><span class="dot"></span> California Neighborhood Intelligence</div>
+    <h1>Know the risk behind any California address.</h1>
+    <p class="lede">Enter a home address and every hazard &amp; livability map — flood, fire, earthquake, pollution, schools, transit and 30+ more — recenters on it, with live risk lookups and a clean downloadable PDF.</p>
+
+    <div class="searchcard">
+      <div class="field">
+        <label for="addr">California home address</label>
+        <input id="addr" type="text" placeholder="Start typing a California address…" autocomplete="off" aria-autocomplete="list"/>
+        <div id="suggest" class="suggest hidden"></div>
+      </div>
+      <button class="btn primary" id="go">Analyze</button>
+      <button class="btn ghost" id="pdf" disabled>↓ PDF</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="trust">36 factors · FEMA · CAL FIRE · USGS · U.S. Census · CalEPA · Esri</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="results" class="hidden">
+
+    <!-- location summary -->
+    <section class="summary panel">
+      <div class="loc">
+        <div>
+          <div class="loc-zip" id="locZip">ZIP —</div>
+          <div class="loc-addr" id="locAddr">—</div>
+        </div>
+        <div class="loc-coords" id="locCoords"></div>
+      </div>
+      <div class="summary-grid">
+        <div id="map"></div>
+        <div class="rightcol">
+          <div class="dims">
+            <div class="dim"><div class="l">Health Risk</div><div class="v" id="dimHealth">—</div></div>
+            <div class="dim"><div class="l">Property Value Risk</div><div class="v" id="dimProp">—</div></div>
+            <div class="dim"><div class="l">Insurance Cost</div><div class="v" id="dimIns">—</div></div>
+          </div>
+          <div class="profgrid" id="profile"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AT-A-GLANCE SUMMARY (like report pages 2–8) -->
+    <section class="atglance">
+      <div class="sec-head">
+        <h2>At-a-glance summary</h2>
+        <span class="hint">What each factor is &amp; how it affects health, property value and insurance</span>
+      </div>
+      <div class="note scoring" id="scoring"></div>
+      <div class="legend" id="legend"></div>
+      <div class="tablewrap">
+        <table class="sumtable" id="summaryTable"></table>
+      </div>
+    </section>
+
+    <!-- FULL DETAILS (maps + sources) -->
+    <div class="toolbar">
+      <div>
+        <h2>Full details — maps &amp; sources</h2>
+        <span class="hint" id="counts"></span>
+      </div>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="grid" id="cards"></div>
+
+    <footer class="foot" id="foot"></footer>
+  </div>
+
+  <div id="empty" class="empty">
+    <div class="empty-card">
+      <div class="empty-emoji">🏠</div>
+      <h3>Start with an address</h3>
+      <p>Try <button class="example" data-a="3001 Bishop Dr, San Ramon, CA 94583">3001 Bishop Dr, San Ramon</button> or <button class="example" data-a="1 Dr Carlton B Goodlett Pl, San Francisco, CA 94102">San Francisco City Hall</button>.</p>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js?v=6"></script>
+<script src="factors.js?v=6"></script>
+<script src="app.js?v=6"></script>
+</body>
+</html>
