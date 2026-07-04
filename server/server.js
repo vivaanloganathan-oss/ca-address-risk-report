@@ -175,8 +175,9 @@ async function captureShot(site, query, debug = false) {
     if (site.zoomOutClicks && site.zoomOutSelector) {
       for (let i = 0; i < site.zoomOutClicks; i++) {
         await page.locator(site.zoomOutSelector).first().click().catch(() => {});
-        await page.waitForTimeout(400);
+        await page.waitForTimeout(1000);
       }
+      await page.waitForTimeout(2000); // let tiles finish rendering at the final zoom
     }
 
     return await page.screenshot({ clip: site.clip || undefined });
@@ -185,7 +186,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v7-expandsearch'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v8-zoom'; // bump when editing; check at GET /
 
 // A single unhandled rejection kills modern Node outright — which shows up in
 // Render as a silent "Instance restarted" with no error output. Log instead.
