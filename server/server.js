@@ -31,7 +31,19 @@ app.use(cors());
 
 let browserPromise = null;
 function getBrowser() {
-  if (!browserPromise) browserPromise = chromium.launch({ headless: true });
+  if (!browserPromise) {
+    browserPromise = chromium.launch({
+      headless: true,
+      // Low-memory container hardening: /dev/shm is tiny in Docker (crashes
+      // Chromium), and sandbox/gpu aren't available or needed here.
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    }).then(browser => {
+      // If Chromium dies (e.g. OOM), reset so the next request relaunches it
+      // instead of erroring forever on a dead handle.
+      browser.on('disconnected', () => { browserPromise = null; });
+      return browser;
+    });
+  }
   return browserPromise;
 }
 
