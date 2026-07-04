@@ -141,6 +141,13 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
+const SERVER_VERSION = 'v4-debug-splash'; // bump when editing; check at GET /
+
+app.get('/', (req, res) => res.send(
+  `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
+  `Endpoints: /healthz | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
+));
+
 app.get('/healthz', (req, res) => res.send('ok'));
 
 app.get('/api/mapshot', async (req, res) => {
