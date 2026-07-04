@@ -64,8 +64,25 @@ async function findSearchInput(page, selectors, timeoutPerSelectorMs = 8000) {
 }
 
 // Many agency maps show a disclaimer/splash modal that blocks the app until
-// clicked. Try common dismiss buttons (plus any per-site dismissSelectors).
+// clicked. Some (e.g. CGS EQ Zapp) additionally require ticking an
+// "I agree..." checkbox before their OK button activates. Handle both.
 async function dismissSplash(page, site) {
+  // Step 1: tick any visible "I agree" style consent checkbox
+  const agreeTargets = [
+    'text=/i agree to the above/i', 'text=/i agree to the terms/i',
+    'label:has-text("I agree")', 'input[type="checkbox"]:visible',
+  ];
+  for (const sel of agreeTargets) {
+    try {
+      const el = page.locator(sel).first();
+      if (await el.isVisible({ timeout: 400 })) {
+        await el.click({ timeout: 3000 });
+        await page.waitForTimeout(400);
+        break; // one consent tick is enough
+      }
+    } catch (e) { /* not present — fine */ }
+  }
+  // Step 2: click the dismiss/confirm button
   const candidates = [
     ...(site.dismissSelectors || []),
     'button:has-text("OK")', 'button:has-text("Ok")', 'button:has-text("I Agree")',
@@ -141,7 +158,12 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v4-debug-splash'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v6-terms'; // bump when editing; check at GET /
+
+// A single unhandled rejection kills modern Node outright — which shows up in
+// Render as a silent "Instance restarted" with no error output. Log instead.
+process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));
+process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 
 app.get('/', (req, res) => res.send(
   `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
