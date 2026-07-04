@@ -10,5 +10,5 @@ window.APP_CONFIG = {
   // screenshot of each search-only agency map with the address's ZIP
   // typed into that site's own search box. Leave '' to skip — the
   // section is hidden and those factors keep their existing map links.
-  MAPSHOT_API_BASE: ''
+  MAPSHOT_API_BASE: 'https://ca-address-risk-report.onrender.com'
 };
