@@ -38,7 +38,8 @@ export const SITES = {
     selectorTimeoutMs: 12000,
     submit: 'firstSuggestion',
     suggestionSelector: '.esri-search__suggestions-list li, [role="option"]',
-    suggestDelayMs: 1000, settleDelayMs: 3500,
+    suggestDelayMs: 1000, settleDelayMs: 8000,
+    zoomOutClicks: 3, zoomOutSelector: '[title="Zoom out" i]',
     viewport: { w: 1400, h: 900 }, clip: null,
   },
   9: { // Dams & Inundation
