@@ -99,6 +99,7 @@ async function captureShot(site, query) {
 app.get('/healthz', (req, res) => res.send('ok'));
 
 app.get('/api/mapshot', async (req, res) => {
+  res.set('Cache-Control', 'no-store'); // errors & images always fresh from server; server has its own disk cache
   const factorId = Number(req.query.factor);
   const query = String(req.query.q || req.query.zip || req.query.address || '').trim();
   const site = SITES[factorId];
