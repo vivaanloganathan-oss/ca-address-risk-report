@@ -1,0 +1,17 @@
+{
+  "name": "ca-address-risk-mapshot-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Self-hosted Playwright server that captures live screenshots of agency map sites with a ZIP/address typed into their own search box.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "playwright install --with-deps chromium",
+    "calibrate": "node calibrate.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "playwright": "^1.47.0"
+  }
+}

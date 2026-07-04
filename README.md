@@ -33,6 +33,22 @@ Population / median income / median home value auto-load when a **free** U.S. Ce
    ```
 Without a key the app still works — the demographics panel shows a link to the ZIP profile instead.
 
+## Optional: dynamic Map Shots (live, address-searched screenshots)
+About a third of the 36 factors link to agency maps that have **no URL
+parameter for a location** — you have to type into their own search box.
+The `server/` folder is a small, separately-hosted Playwright service that
+does exactly that: opens the site, types the address's ZIP into its search
+box, waits for it to zoom/pan, and returns a screenshot. The frontend calls
+it for a new **"Map Shots"** section (shown after the at-a-glance summary).
+
+This can't run inside the static frontend itself — browsers block a page's
+JavaScript from reaching into another site to read or screenshot it — so it
+needs its own small backend. See `server/README.md` for calibration and
+deployment (Render / Fly.io / Railway). Point `MAPSHOT_API_BASE` in
+`config.js` at it once deployed; leave it blank to keep the app fully
+static (the section then just explains how to enable it, and the affected
+factors keep working via their existing "Open live map" links).
+
 ## How risk is determined
 - **Scoring:** 0 = No · 1–4 = Low · 5–7 = Moderate · 8–10 = High.
 - **Live / automatic:** factors with a public REST API are queried at the exact point and rated automatically (currently **FEMA NFHL flood zone**; **Census** demographics with a key). The architecture makes it easy to add more (see `factors.js` `live` keys and `app.js` lookups).

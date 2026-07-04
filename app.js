@@ -130,7 +130,10 @@ function renderSummaryTable(st, liveResults){
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
     const what=(live&&live.desc)?live.desc:f.detail;
     const im=effImpact(f,live);
-    const risk = live ? `${live.label.replace(' Risk','')} · ${live.score}/10` : 'Open map';
+    const mapUrl=fill(f.map, st);
+    const risk = live
+      ? `${live.label.replace(' Risk','')} · ${live.score}/10`
+      : `<a class="rk-link" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>`;
     return `<tr>
       <td class="num">${f.n}</td>
       <td><div class="fname">${f.name}</div><div class="fcat">${f.cat}</div></td>
@@ -234,9 +237,10 @@ async function analyze(){
   if(flood){ liveResults[8]=flood; }
   if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`}; }
 
-  // summary view (table) + full detail cards
+  // summary view (table) + map shots + full detail cards
   renderScoring();
   renderSummaryTable(st, liveResults);
+  renderMapShots(st);
   $('#cards').innerHTML = FACTORS.map(f=>cardHTML(f, st, liveResults[f.n]||null)).join('');
   buildFilters();
 
@@ -256,6 +260,47 @@ async function analyze(){
 
 /* show/resize the Leaflet map once its container is visible */
 function invalidateMapSoon(){ setTimeout(()=>{ if(map) map.invalidateSize(); }, 60); }
+
+/* ---------- Map Shots (dynamic live screenshots via self-hosted server) ---------- */
+function mapShotUrl(factorId, query){
+  const cfg=window.APP_CONFIG||{};
+  return `${cfg.MAPSHOT_API_BASE.replace(/\/$/,'')}/api/mapshot?factor=${factorId}&q=${encodeURIComponent(query)}`;
+}
+
+function renderMapShots(st){
+  const cfg=window.APP_CONFIG||{};
+  const section=$('#mapshotsSection');
+  const searchFactors = FACTORS.filter(f=>f.recenter==='search');
+
+  if(!cfg.MAPSHOT_API_BASE){
+    $('#mapshotsNote').innerHTML = `Dynamic map shots aren't configured for this deployment yet. `
+      + `Set <code>MAPSHOT_API_BASE</code> in <code>config.js</code> to your self-hosted map-shot server (see <code>/server</code>) to enable live, address-searched screenshots for the ${searchFactors.length} search-only factors below. `
+      + `Until then, use each factor's "Open live map" link in Full Details and search manually.`;
+    $('#mapshotsGrid').innerHTML='';
+    return;
+  }
+
+  const query = st.zip || st.display;
+  $('#mapshotsNote').innerHTML = `Searching <b>${query}</b> on ${searchFactors.length} agency sites. Each shot is captured live and cached for a week.`;
+  $('#mapshotsGrid').innerHTML = searchFactors.map(f=>{
+    const src = mapShotUrl(f.n, query);
+    const liveLink = fill(f.map, st);
+    return `<div class="card mscard" data-cat="${f.cat}">
+      <div class="ms-imgwrap">
+        <img class="thumb ms-thumb" src="${src}" alt="live search screenshot of ${f.name} for ${query}" loading="lazy"
+             onload="this.closest('.mscard').classList.add('loaded')"
+             onerror="this.closest('.mscard').classList.add('failed')"/>
+        <div class="ms-loading"><span class="spinner"></span>Capturing live…</div>
+        <div class="ms-failed">Couldn't capture a live shot. <a href="${liveLink}" target="_blank" rel="noopener">Open live map ↗</a> and search "${query}" yourself.</div>
+      </div>
+      <div class="body">
+        <div class="top"><div><div class="cat">${f.cat}</div><div class="nm">#${f.n} ${f.name}</div></div></div>
+        <div class="note">${f.detail}</div>
+        <div class="links"><a href="${liveLink}" target="_blank" rel="noopener">Open live map ↗</a></div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 /* category filter chips */
 function buildFilters(){
