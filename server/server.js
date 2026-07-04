@@ -63,7 +63,28 @@ async function findSearchInput(page, selectors, timeoutPerSelectorMs = 8000) {
   return null;
 }
 
-async function captureShot(site, query) {
+// Many agency maps show a disclaimer/splash modal that blocks the app until
+// clicked. Try common dismiss buttons (plus any per-site dismissSelectors).
+async function dismissSplash(page, site) {
+  const candidates = [
+    ...(site.dismissSelectors || []),
+    'button:has-text("OK")', 'button:has-text("Ok")', 'button:has-text("I Agree")',
+    'button:has-text("Agree")', 'button:has-text("Accept")', 'button:has-text("Got It")',
+    'button:has-text("Continue")', 'button:has-text("Close")', 'button:has-text("I Understand")',
+    '[aria-label="Close" i]', '.jimu-widget-splash .jimu-btn',
+  ];
+  for (const sel of candidates) {
+    try {
+      const btn = page.locator(sel).first();
+      if (await btn.isVisible({ timeout: 400 })) {
+        await btn.click({ timeout: 3000 });
+        await page.waitForTimeout(700);
+      }
+    } catch (e) { /* not present — fine */ }
+  }
+}
+
+async function captureShot(site, query, debug = false) {
   const browser = await getBrowser();
   const page = await browser.newPage({
     viewport: { width: site.viewport?.w || 1400, height: site.viewport?.h || 900 },
@@ -74,9 +95,21 @@ async function captureShot(site, query) {
     // waiting for network that never truly goes idle). We wait for the actual
     // search input to appear instead, which is the real readiness signal.
     await page.goto(site.url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(1500);       // let any splash modal render
+    await dismissSplash(page, site);
 
-    const input = await findSearchInput(page, site.searchSelectors, site.selectorTimeoutMs);
-    if (!input) throw new Error(`search input not found (tried: ${site.searchSelectors.join(', ')})`);
+    let input = await findSearchInput(page, site.searchSelectors, site.selectorTimeoutMs);
+    if (!input) {
+      // splash may have appeared late — try dismissing again, then one quick retry
+      await dismissSplash(page, site);
+      input = await findSearchInput(page, site.searchSelectors, 4000);
+    }
+    if (!input) {
+      const title = await page.title().catch(() => '?');
+      const err = new Error(`search input not found on "${title}" (tried: ${site.searchSelectors.join(', ')})`);
+      if (debug) err.debugShot = await page.screenshot().catch(() => null);
+      throw err;
+    }
 
     await input.click({ timeout: 10000 });
     await input.fill('').catch(() => {});
@@ -126,10 +159,16 @@ app.get('/api/mapshot', async (req, res) => {
   }
 
   try {
-    const buf = await captureShot(site, query);
+    const debug = req.query.debug === '1';
+    const buf = await captureShot(site, query, debug);
     fs.writeFileSync(file, buf);
     res.type('png').send(buf);
   } catch (e) {
+    if (e.debugShot) {
+      // debug=1: show what headless Chromium actually saw when it gave up
+      res.status(200).set('X-Mapshot-Error', String(e.message || e).slice(0, 500));
+      return res.type('png').send(e.debugShot);
+    }
     res.status(502).json({ error: 'mapshot_failed', detail: String(e.message || e) });
   }
 });
