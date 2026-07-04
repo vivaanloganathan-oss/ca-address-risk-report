@@ -40,7 +40,8 @@ export const SITES = {
     suggestionSelector: '.esri-search__suggestions-list li, [role="option"]',
     suggestDelayMs: 1000, settleDelayMs: 8000,
     zoomOutClicks: 3, zoomOutSelector: '[title="Zoom out" i]',
-    viewport: { w: 1400, h: 900 }, clip: null,
+    viewport: { w: 1400, h: 900 },
+    clip: { x: 580, y: 170, width: 815, height: 725 }, // map area only — skips the left Information panel & header
   },
   9: { // Dams & Inundation
     url: 'https://fmds.water.ca.gov/webgis/?appid=dam_prototype_v2',
