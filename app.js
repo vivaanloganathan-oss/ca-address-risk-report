@@ -539,14 +539,24 @@ function buildMainMap(st){
   const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'\u00a9 Esri'});
   streets.addTo(map);
   const overlays = {};
+  const layerState = {};
+  function refreshLayerStatus(){
+    const el=document.getElementById('layerStatus'); if(!el) return;
+    const bad=Object.entries(layerState).filter(([,v])=>v===false).map(([k])=>k);
+    el.innerHTML = bad.length
+      ? `⚠ Couldn't load from the agency server: <b>${bad.join('</b> · <b>')}</b> — re-toggle the layer or try again shortly.`
+      : '';
+  }
   if(window.L && window.L.esri){
     MAP_OVERLAYS.forEach(o=>{
       let layer=null;
       try{
         layer = o.type==='feature'
           ? L.esri.featureLayer({url:o.url, style:()=>o.style||{}})
-          : L.esri.dynamicMapLayer({url:o.url, opacity:o.opacity ?? .5, layers:o.layers});
+          : L.esri.dynamicMapLayer({url:o.url, opacity:o.opacity ?? .5, layers:o.layers, format:'png32'});
       }catch(e){ return; }
+      layer.on('requesterror', ()=>{ layerState[o.name]=false; refreshLayerStatus(); });
+      layer.on('load', ()=>{ layerState[o.name]=true; refreshLayerStatus(); });
       overlays[o.name]=layer;
       if(o.on) layer.addTo(map);
     });

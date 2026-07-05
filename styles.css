@@ -260,3 +260,5 @@ tr.flash{animation:rowflash 1.6s ease-out}
 #glanceSearch{padding:8px 13px;border:1px solid #d4dbe6;border-radius:9px;font-family:inherit;font-size:13px;min-width:230px;color:var(--ink)}
 #glanceSearch:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,109,246,.13)}
 .buildtag{opacity:.55}
+.layer-status{font-size:11.5px;color:#a04010;background:#fdf2e4;border:1px solid #f2ddba;border-radius:8px;padding:6px 10px;margin-top:7px}
+.layer-status:empty{display:none}
