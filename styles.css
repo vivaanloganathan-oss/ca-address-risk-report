@@ -240,3 +240,22 @@ tr.flash{animation:rowflash 1.6s ease-out}
 @media(min-width:1080px){.hero-grid{grid-template-columns:1.45fr .72fr}}
 .zip-tag{font-size:13px;font-weight:700;color:var(--accent);background:#eaf1fe;border:1px solid #d4e2fd;border-radius:16px;padding:3px 11px;vertical-align:3px;margin-left:6px}
 .localnote{margin-top:6px;font-size:11px;color:#3c5a86;background:#f2f7ff;border:1px solid #d9e7fb;border-radius:8px;padding:6px 8px;line-height:1.5}
+
+/* ---------- Full-width map, risk score below ---------- */
+.hero-grid{grid-template-columns:1fr !important}
+.mapcol #map{height:620px}
+@media(max-width:760px){.mapcol #map{height:420px}}
+.riskcol{display:grid;gap:14px 22px;grid-template-columns:1fr}
+@media(min-width:860px){
+  .riskcol{grid-template-columns:235px 1fr;grid-template-areas:"head head" "gauge tabs" "gauge drivers";align-items:start}
+  .riskcol .risk-head{grid-area:head}
+  .riskcol .gaugebox{grid-area:gauge}
+  .riskcol .dimtabs{grid-area:tabs}
+  .riskcol .drivers{grid-area:drivers;max-height:none}
+}
+
+/* ---------- At-a-glance controls ---------- */
+.glance-controls{display:flex;flex-direction:column;gap:10px;margin:14px 2px 12px}
+.gc-right{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+#glanceSearch{padding:8px 13px;border:1px solid #d4dbe6;border-radius:9px;font-family:inherit;font-size:13px;min-width:230px;color:var(--ink)}
+#glanceSearch:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,109,246,.13)}

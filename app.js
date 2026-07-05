@@ -292,9 +292,11 @@ function renderSummaryTable(st, liveResults){
     const risk = live
       ? `${live.label.replace(' Risk','')} · ${live.score}/10`
       : `<a class="rk-link" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>`;
-    return `<tr id="sumrow-${f.n}">
+    const rowRisk = live ? live.score
+      : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
+    return `<tr id="sumrow-${f.n}" data-cat="${f.cat}" data-name="${(f.name+' '+f.cat).toLowerCase()}" data-risk="${rowRisk}">
       <td class="num">${f.n}</td>
-      <td><div class="fname">${f.name}</div><div class="fcat">${f.cat}</div></td>
+      <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${f.cat}</div></td>
       <td class="what">${what}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${risk}</td>
@@ -307,6 +309,42 @@ function renderSummaryTable(st, liveResults){
        <th>#</th><th>Factor</th><th>What it is</th>
        <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Risk</th>
      </tr></thead><tbody>${rows}</tbody>`;
+  buildGlanceControls();
+}
+
+/* ---------- At-a-glance interactivity: category chips, search, risk sort ---------- */
+let GLANCE = {cat:'*', q:'', sort:'num'};
+function applyGlanceFilters(){
+  const tbody=document.querySelector('#summaryTable tbody'); if(!tbody) return;
+  let rows=[...tbody.querySelectorAll('tr')];
+  rows.sort(GLANCE.sort==='risk'
+    ? (a,b)=>(+b.dataset.risk)-(+a.dataset.risk) || (+a.id.slice(7))-(+b.id.slice(7))
+    : (a,b)=>(+a.id.slice(7))-(+b.id.slice(7)));
+  rows.forEach(r=>tbody.appendChild(r));
+  let n=0;
+  rows.forEach(r=>{
+    const ok=(GLANCE.cat==='*'||r.dataset.cat===GLANCE.cat)
+          && (!GLANCE.q || r.dataset.name.includes(GLANCE.q));
+    r.style.display = ok ? '' : 'none';
+    if(ok) n++;
+  });
+  const c=$('#glanceCount'); if(c) c.textContent=`showing ${n} of ${FACTORS.length}`;
+}
+function buildGlanceControls(){
+  GLANCE={cat:'*', q:'', sort:'num'};
+  const box=$('#glanceCats'); if(!box) return;
+  const cats=[...new Set(FACTORS.map(f=>f.cat))];
+  box.innerHTML = `<button class="fchip active" data-cat="*">All ${FACTORS.length}</button>`
+    + cats.map(c=>`<button class="fchip" data-cat="${c}">${c}</button>`).join('');
+  box.querySelectorAll('.fchip').forEach(b=>b.addEventListener('click',()=>{
+    box.querySelectorAll('.fchip').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); GLANCE.cat=b.dataset.cat; applyGlanceFilters();
+  }));
+  const s=$('#glanceSearch'); s.value=''; s.oninput=e=>{GLANCE.q=e.target.value.trim().toLowerCase(); applyGlanceFilters();};
+  $('#sortNum').onclick=()=>{GLANCE.sort='num'; $('#sortNum').classList.add('active'); $('#sortRisk').classList.remove('active'); applyGlanceFilters();};
+  $('#sortRisk').onclick=()=>{GLANCE.sort='risk'; $('#sortRisk').classList.add('active'); $('#sortNum').classList.remove('active'); applyGlanceFilters();};
+  $('#sortNum').classList.add('active'); $('#sortRisk').classList.remove('active');
+  applyGlanceFilters();
 }
 
 function riskKey(label){ if(!label) return 'pending'; const l=label.toLowerCase();
