@@ -567,8 +567,7 @@ async function analyze(){
   const R = renderOverall(liveResults);
   updateMapRisk(st);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
-  const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) };
-  $('#dimHealth').textContent=d.health; $('#dimProp').textContent=d.prop; $('#dimIns').textContent=d.ins;
+  const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
   $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Basemaps © Esri. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting.`;
 
