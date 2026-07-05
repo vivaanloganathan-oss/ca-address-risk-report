@@ -233,3 +233,10 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .mrb-score span{font-size:11px;font-weight:700;color:var(--muted)}
 .mrb-band{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
 .mrb-dims{display:flex;justify-content:center;gap:7px;margin-top:5px;font-size:10px;font-weight:700;color:#42526b;border-top:1px solid var(--line);padding-top:5px}
+
+/* ---------- Larger map + ZIP-specific touches ---------- */
+.mapcol #map{height:560px}
+@media(max-width:919px){.mapcol #map{height:400px}}
+@media(min-width:1080px){.hero-grid{grid-template-columns:1.45fr .72fr}}
+.zip-tag{font-size:13px;font-weight:700;color:var(--accent);background:#eaf1fe;border:1px solid #d4e2fd;border-radius:16px;padding:3px 11px;vertical-align:3px;margin-left:6px}
+.localnote{margin-top:6px;font-size:11px;color:#3c5a86;background:#f2f7ff;border:1px solid #d9e7fb;border-radius:8px;padding:6px 8px;line-height:1.5}

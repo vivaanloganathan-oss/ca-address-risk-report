@@ -125,10 +125,13 @@ function renderScoring(){
 }
 
 function renderSummaryTable(st, liveResults){
+  const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
+  const NOTES = localNotesFor(st);
   const cell = o => `<td class="impcell">${lvlPill(o.level)}<span class="w">${o.why}</span></td>`;
   const rows = FACTORS.map(f=>{
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
-    const what=(live&&live.desc)?live.desc:f.detail;
+    const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
+    const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
     const mapUrl=fill(f.map, st);
     const risk = live
@@ -254,6 +257,40 @@ function renderOverall(liveResults){
   return RISK;
 }
 
+/* ---------- Coverage (ZIP-specific rollout) ---------- */
+const ZIP_CITY = { '94582':'San Ramon', '94583':'San Ramon', '94506':'Danville', '94526':'Danville' };
+const LOCAL_NOTES_BY_CITY = {
+  'San Ramon': {
+    5:'The Calaveras Fault corridor runs through the San Ramon Valley; Alquist\u2011Priolo study zones flank the valley \u2014 see the fault layer on the live map.',
+    6:'Valley-floor alluvium along the San Ramon Creek corridor is where liquefaction zoning concentrates locally \u2014 toggle the CGS layer to check this parcel.',
+    7:'Mapped earthquake-induced landslide zones sit on the hillside flanks (Las Trampas ridge to the west, Diablo foothills east); the valley floor is largely outside them.',
+    8:'Local flood zones follow San Ramon and Sycamore Valley creeks \u2014 the FEMA result above is queried live for this exact point.',
+    11:'Wildland-urban interface parcels on the eastern and western hillside edges carry elevated CAL FIRE severity; central valley-floor neighborhoods are lower.',
+    33:'Livermore Municipal is the closest airport (~10 mi E); OAK/SFO approaches pass well to the west \u2014 overflight is modest for most of the ZIP.',
+    34:'Dublin/Pleasanton BART is the nearest station (~5\u20138 mi south via I\u2011680); San Ramon itself has bus (County Connection) service.',
+  },
+  'Danville': {
+    5:'The Calaveras Fault corridor passes directly through the Danville area; Alquist\u2011Priolo study zones are mapped locally \u2014 see the fault layer on the live map.',
+    6:'Liquefaction zoning locally concentrates on creek-corridor alluvium (San Ramon Creek, Green Valley Creek) \u2014 toggle the CGS layer to check this parcel.',
+    7:'Earthquake-induced landslide zones are mapped on the Las Trampas and Diablo foothill flanks around town; valley-floor parcels are largely outside them.',
+    8:'Local flood zones track San Ramon and Sycamore creeks \u2014 the FEMA result above is queried live for this exact point.',
+    11:'Hillside and Diablo-foothill edges (e.g. toward Blackhawk) carry elevated CAL FIRE severity; the town core is lower.',
+    33:'Livermore Municipal (~12 mi SE) and Buchanan Field (~10 mi N) are the nearest airports; overflight is modest for most parcels.',
+    34:'Walnut Creek and Dublin/Pleasanton BART are each roughly 15 minutes by car; local transit is County Connection bus.',
+  },
+};
+function localNotesFor(st){ const city = ZIP_CITY[st.zip]; return city ? (LOCAL_NOTES_BY_CITY[city]||{}) : {}; }
+
+function showComingSoon(st){
+  $('#results').classList.add('hidden');
+  $('#empty').classList.add('hidden');
+  const cs=$('#comingsoon');
+  cs.classList.remove('hidden');
+  $('#csZip').textContent = st.zip ? `ZIP ${st.zip}` : (st.city || 'this area');
+  $('#csCity').textContent = st.city ? ` (${st.city})` : '';
+  setStatus(`Risk analysis for ${st.zip||st.city} is coming soon \u2014 currently covering San Ramon &amp; Danville.`,'err');
+}
+
 /* ---------- Risk score shown on the map ---------- */
 let mapRiskCtl = null;
 function updateMapRisk(st){
@@ -335,6 +372,9 @@ async function analyze(){
   try{ st=await geocode(q); }
   catch(e){ setStatus(e.message,'err'); $('#go').disabled=false; return; }
   STATE=st;
+  if(!ZIP_CITY[st.zip]){ showComingSoon(st); $('#go').disabled=false; return; }
+  try{
+  $('#comingsoon').classList.add('hidden');
   $('#empty').classList.add('hidden');
   $('#results').classList.remove('hidden');
   $('#locZip').textContent = 'ZIP '+(st.zip||'n/a');
@@ -368,8 +408,10 @@ async function analyze(){
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting.`;
 
   STATE._dims=d; STATE._census=census;
-  $('#go').disabled=false; $('#pdf').disabled=false;
+  $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
+  }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
+  finally{ $('#go').disabled=false; }
 }
 
 /* show/resize the Leaflet map once its container is visible */
