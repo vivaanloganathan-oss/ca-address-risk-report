@@ -195,7 +195,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v9-polish'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v10-queue'; // bump when editing; check at GET /
 
 // A single unhandled rejection kills modern Node outright — which shows up in
 // Render as a silent "Instance restarted" with no error output. Log instead.
@@ -208,6 +208,18 @@ app.get('/', (req, res) => res.send(
 ));
 
 app.get('/healthz', (req, res) => res.send('ok'));
+
+// Concurrency guard: each capture runs a Chromium page. Unlimited parallel
+// requests (e.g. a page load requesting all 17 factors) would exhaust memory.
+const MAX_CONCURRENT = 2;
+let activeJobs = 0;
+const jobWaiters = [];
+async function withSlot(fn) {
+  if (activeJobs >= MAX_CONCURRENT) await new Promise(r => jobWaiters.push(r));
+  activeJobs++;
+  try { return await fn(); }
+  finally { activeJobs--; const next = jobWaiters.shift(); if (next) next(); }
+}
 
 app.get('/api/mapshot', async (req, res) => {
   res.set('Cache-Control', 'no-store'); // errors & images always fresh from server; server has its own disk cache
@@ -226,7 +238,7 @@ app.get('/api/mapshot', async (req, res) => {
 
   try {
     const debug = req.query.debug === '1';
-    const buf = await captureShot(site, query, debug);
+    const buf = await withSlot(() => captureShot(site, query, debug));
     fs.writeFileSync(file, buf);
     res.type('png').send(buf);
   } catch (e) {
