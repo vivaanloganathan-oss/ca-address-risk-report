@@ -170,7 +170,6 @@ function effImpact(f, live){
 
 function cardHTML(f, st, live){
   const url = fill(f.map, st);
-  const thumb = thumbUrl(st.lat, st.lon, f.basemap);
   const col = RC[ riskKey(live&&live.label) ];
   const im = effImpact(f, live);
   const impRows = [['Health','health'],['Property','property'],['Insurance','insurance']]
@@ -180,8 +179,7 @@ function cardHTML(f, st, live){
     : `<span class="hint">↳ live map recentered on this address</span>`;
   const altLink = f.alt ? ` · <a href="${f.alt}" target="_blank" rel="noopener">alt source ↗</a>` : '';
   return `<div class="card" data-cat="${f.cat}" style="--stripe:${col}">
-    <img class="thumb" src="${thumb}" alt="map of ${f.name} at the address" loading="lazy" crossorigin="anonymous"
-         onerror="this.style.background='#e6ecf3';this.removeAttribute('src');"/>
+    ${cardMediaHTML(f, st)}
     <div class="body">
       <div class="top">
         <div><div class="cat">${f.cat}</div><div class="nm">#${f.n} ${f.name}</div></div>
@@ -240,8 +238,8 @@ async function analyze(){
   // summary view (table) + map shots + full detail cards
   renderScoring();
   renderSummaryTable(st, liveResults);
-  renderMapShots(st);
   $('#cards').innerHTML = FACTORS.map(f=>cardHTML(f, st, liveResults[f.n]||null)).join('');
+  initCardMedia(st);
   buildFilters();
 
   // dims
@@ -261,45 +259,71 @@ async function analyze(){
 /* show/resize the Leaflet map once its container is visible */
 function invalidateMapSoon(){ setTimeout(()=>{ if(map) map.invalidateSize(); }, 60); }
 
-/* ---------- Map Shots (dynamic live screenshots via self-hosted server) ---------- */
+/* ---------- Per-card media: live agency layer > live screenshot > basemap thumb ---------- */
 function mapShotUrl(factorId, query){
   const cfg=window.APP_CONFIG||{};
   return `${cfg.MAPSHOT_API_BASE.replace(/\/$/,'')}/api/mapshot?factor=${factorId}&q=${encodeURIComponent(query)}`;
 }
 
-function renderMapShots(st){
+/* Factors whose agency publishes a public ArcGIS map service get a LIVE
+   interactive mini-map (agency layer over OSM, centered on the address).
+   Add entries here as service URLs are verified. */
+const LIVE_LAYERS = {
+  6:  { url: 'https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Liquefaction_Zones/MapServer', opacity: .55 },
+  11: { url: 'https://services.gis.ca.gov/arcgis/rest/services/Environment/Fire_Severity_Zones/MapServer', opacity: .5 },
+};
+
+function cardMediaHTML(f, st){
   const cfg=window.APP_CONFIG||{};
-  const section=$('#mapshotsSection');
-  const searchFactors = FACTORS.filter(f=>f.recenter==='search');
-
-  if(!cfg.MAPSHOT_API_BASE){
-    $('#mapshotsNote').innerHTML = `Dynamic map shots aren't configured for this deployment yet. `
-      + `Set <code>MAPSHOT_API_BASE</code> in <code>config.js</code> to your self-hosted map-shot server (see <code>/server</code>) to enable live, address-searched screenshots for the ${searchFactors.length} search-only factors below. `
-      + `Until then, use each factor's "Open live map" link in Full Details and search manually.`;
-    $('#mapshotsGrid').innerHTML='';
-    return;
+  const liveOK = !!(window.L && window.L.esri);
+  if(liveOK && LIVE_LAYERS[f.n]){
+    return `<div class="ms-imgwrap"><div class="ms-livemap" id="mslive-${f.n}"></div><span class="livechip media-chip">LIVE</span></div>`;
   }
-
-  const query = st.zip || st.display;
-  $('#mapshotsNote').innerHTML = `Searching <b>${query}</b> on ${searchFactors.length} agency sites. Each shot is captured live and cached for a week.`;
-  $('#mapshotsGrid').innerHTML = searchFactors.map(f=>{
-    const src = mapShotUrl(f.n, query);
+  if(f.recenter==='search' && cfg.MAPSHOT_API_BASE){
     const liveLink = fill(f.map, st);
-    return `<div class="card mscard" data-cat="${f.cat}">
-      <div class="ms-imgwrap">
-        <img class="thumb ms-thumb" src="${src}" alt="live search screenshot of ${f.name} for ${query}" loading="lazy"
-             onload="this.closest('.mscard').classList.add('loaded')"
-             onerror="this.closest('.mscard').classList.add('failed')"/>
-        <div class="ms-loading"><span class="spinner"></span>Capturing live…</div>
-        <div class="ms-failed">Couldn't capture a live shot. <a href="${liveLink}" target="_blank" rel="noopener">Open live map ↗</a> and search "${query}" yourself.</div>
-      </div>
-      <div class="body">
-        <div class="top"><div><div class="cat">${f.cat}</div><div class="nm">#${f.n} ${f.name}</div></div></div>
-        <div class="note">${f.detail}</div>
-        <div class="links"><a href="${liveLink}" target="_blank" rel="noopener">Open live map ↗</a></div>
-      </div>
+    return `<div class="ms-imgwrap">
+      <img class="thumb ms-thumb" data-src="${mapShotUrl(f.n, st.zip || st.display)}" alt="live search screenshot of ${f.name}"
+           onload="this.closest('.card').classList.add('loaded')"
+           onerror="if(this.dataset.src) this.closest('.card').classList.add('failed')"/>
+      <div class="ms-loading"><span class="spinner"></span>Capturing live\u2026</div>
+      <div class="ms-failed">Couldn't capture. <a href="${liveLink}" target="_blank" rel="noopener">Open live map \u2197</a></div>
     </div>`;
-  }).join('');
+  }
+  return `<img class="thumb" src="${thumbUrl(st.lat, st.lon, f.basemap)}" alt="map of ${f.name} at the address" loading="lazy" crossorigin="anonymous"
+       onerror="this.style.background='#e6ecf3';this.removeAttribute('src');"/>`;
+}
+
+let LIVE_MAP_INSTANCES = [];
+function initCardMedia(st){
+  // live interactive mini-maps (agency layer + OSM base + address pin)
+  LIVE_MAP_INSTANCES.forEach(m=>{ try{ m.remove(); }catch(e){} });
+  LIVE_MAP_INSTANCES = [];
+  if(window.L && window.L.esri){
+    FACTORS.forEach(f=>{
+      const lc = LIVE_LAYERS[f.n];
+      if(!lc) return;
+      const el = document.getElementById('mslive-'+f.n);
+      if(!el) return;
+      const m = L.map(el, {scrollWheelZoom:false, attributionControl:false}).setView([st.lat, st.lon], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(m);
+      L.esri.dynamicMapLayer({url:lc.url, opacity:lc.opacity ?? .55}).addTo(m);
+      L.marker([st.lat, st.lon]).addTo(m);
+      LIVE_MAP_INSTANCES.push(m);
+      setTimeout(()=>m.invalidateSize(), 80);
+    });
+  }
+  // live screenshots, limited concurrency (each runs a headless browser server-side)
+  const queue = [...document.querySelectorAll('#cards .ms-thumb')].filter(img=>!img.src);
+  const CONCURRENCY = 2;
+  function loadNext(){
+    const img = queue.shift();
+    if(!img) return;
+    const done = ()=>loadNext();
+    img.addEventListener('load', done, {once:true});
+    img.addEventListener('error', done, {once:true});
+    img.src = img.dataset.src;
+  }
+  for(let i=0;i<CONCURRENCY;i++) loadNext();
 }
 
 /* category filter chips */
@@ -315,6 +339,7 @@ function buildFilters(){
     document.querySelectorAll('#cards .card').forEach(card=>{
       card.style.display = (cat==='*'||card.dataset.cat===cat) ? '' : 'none';
     });
+    LIVE_MAP_INSTANCES.forEach(m=>setTimeout(()=>{ try{ m.invalidateSize(); }catch(e){} }, 60));
   }));
 }
 
