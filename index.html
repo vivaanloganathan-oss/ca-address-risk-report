@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="styles.css?v=13"/>
+<link rel="stylesheet" href="styles.css?v=14"/>
 </head>
 <body>
 
@@ -51,6 +51,9 @@
             <button type="button" data-map-action="center">Center</button>
             <button type="button" data-map-action="zoom-in">+</button>
             <button type="button" data-map-action="zoom-out">−</button>
+            <button type="button" data-map-preset="flood">Flood</button>
+            <button type="button" data-map-preset="quake">Quake</button>
+            <button type="button" data-map-preset="fire">Fire</button>
             <button type="button" data-map-action="streets" class="active">Streets</button>
             <button type="button" data-map-action="imagery">Imagery</button>
             <button type="button" data-layer-name="FEMA Flood Zones" class="active">FEMA Flood</button>
@@ -81,6 +84,25 @@
         <summary>How risk levels are determined</summary>
         <div id="methodBody"></div>
       </details>
+    </section>
+
+    <section class="insights-grid" id="insightsGrid">
+      <div class="insight-panel insight-summary">
+        <div class="insight-k">Score summary</div>
+        <div id="scoreSummary"></div>
+      </div>
+      <div class="insight-panel">
+        <div class="insight-k">Neighborhood snapshot</div>
+        <div id="neighborhoodSnapshot"></div>
+      </div>
+      <div class="insight-panel">
+        <div class="insight-k">Compare analyzed addresses</div>
+        <div id="compareTray"></div>
+      </div>
+      <div class="insight-panel">
+        <div class="insight-k">Timeline / history signals</div>
+        <div id="historySignals"></div>
+      </div>
     </section>
 
     <!-- AT-A-GLANCE SUMMARY (like report pages 2–8) -->
@@ -132,7 +154,7 @@
 <script src="config.js?v=6"></script>
 <script src="factors.js?v=6"></script>
 <script src="explanations.js?v=6"></script>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 <div id="xmodal" class="xmodal hidden" role="dialog" aria-modal="true">
   <div class="xmodal-card">
     <div class="xmodal-head"><h3 id="xmodalTitle"></h3><button id="xmodalClose" aria-label="Close">×</button></div>

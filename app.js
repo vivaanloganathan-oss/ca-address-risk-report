@@ -420,16 +420,29 @@ function openFactorModal(n){
       </div>
       <span class="detail-risk rk-${rk}">${score}</span>
     </div>
-    <div class="detail-desc">${what}</div>
-    <div class="detail-actions">
-      <a class="btn primary detail-map" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>
+    <div class="detail-tabs">
+      <button type="button" class="active" data-detail-tab="overview">Overview</button>
+      <button type="button" data-detail-tab="impacts">Impacts</button>
+      <button type="button" data-detail-tab="map">Map</button>
+      <button type="button" data-detail-tab="explain">Explanation</button>
     </div>
-    <div class="detail-impact-grid">
-      ${impactBlock('Health', im.health)}
-      ${impactBlock('Property value', im.property)}
-      ${impactBlock('Insurance', im.insurance)}
+    <div class="detail-pane active" data-detail-pane="overview">
+      <div class="detail-desc">${what}</div>
     </div>
-    <div class="detail-section">
+    <div class="detail-pane" data-detail-pane="impacts">
+      <div class="detail-impact-grid">
+        ${impactBlock('Health', im.health)}
+        ${impactBlock('Property value', im.property)}
+        ${impactBlock('Insurance', im.insurance)}
+      </div>
+    </div>
+    <div class="detail-pane" data-detail-pane="map">
+      <div class="detail-desc">Open the live agency or map source recentered on this address.</div>
+      <div class="detail-actions">
+        <a class="btn primary detail-map" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>
+      </div>
+    </div>
+    <div class="detail-pane" data-detail-pane="explain">
       <div class="detail-section-title">Explanation</div>
       ${explain}
     </div>
@@ -437,6 +450,11 @@ function openFactorModal(n){
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
   $('#xmodal').classList.remove('hidden');
+  $('#xmodalBody').querySelectorAll('[data-detail-tab]').forEach(tab=>tab.addEventListener('click',()=>{
+    const key = tab.dataset.detailTab;
+    $('#xmodalBody').querySelectorAll('[data-detail-tab]').forEach(t=>t.classList.toggle('active', t===tab));
+    $('#xmodalBody').querySelectorAll('[data-detail-pane]').forEach(p=>p.classList.toggle('active', p.dataset.detailPane===key));
+  }));
   const btn = $('#xmodalBody').querySelector('.detail-explain-btn');
   if(btn) btn.addEventListener('click',()=>{
     const target = document.getElementById(btn.dataset.target);
@@ -592,6 +610,9 @@ function drawGauge(score, band){
 }
 
 let RISK=null, ACTIVEDIM='overall';
+let COMPARE = [];
+try{ COMPARE = JSON.parse(localStorage.getItem('riskCompare')||'[]'); }catch(e){ COMPARE=[]; }
+
 function renderDrivers(){
   const set = ACTIVEDIM==='overall' ? RISK.overall.items : RISK.dims[ACTIVEDIM].items;
   const label = DIMMETA.find(d=>d[0]===ACTIVEDIM)[1];
@@ -629,6 +650,71 @@ function renderOverall(liveResults){
     `<p>Each of the ${FACTORS.length} factors carries an impact level per dimension &mdash; <b>NA</b> (excluded), <b>No</b>, <b>Low</b>, <b>Moderate</b>, <b>High</b>. The lists above show the strongest High and Moderate factors for this address, live-verified factors first.</p>
      <p><b>What's live vs. baseline:</b> ${liveN} factor(s) are scored from live, address-specific data (FEMA flood, CGS fault / liquefaction / landslide zones, CAL FIRE fire severity, OpenStreetMap amenity counts, Census ACS); the rest use their typical California exposure profile. Informational screening only &mdash; not a substitute for professional inspection or underwriting.</p>`;
   return RISK;
+}
+
+function strongest(items, levels=['High','Moderate']){
+  return [...items].filter(x=>levels.includes(x.level)).sort((a,b)=>b.v-a.v).slice(0,3);
+}
+function goodFactors(liveResults, amen){
+  const good=[];
+  if(amen){
+    if((amen.eat+amen.shop)>=10) good.push('daily amenities');
+    if(amen.park>=1) good.push('parks / green space');
+    if((amen.transit+amen.station)>=5) good.push('transit access');
+    if(amen.health>0) good.push('healthcare access');
+  }
+  if(liveResults[8] && liveResults[8].score<=2) good.push('minimal FEMA flood exposure');
+  if(liveResults[11] && liveResults[11].score<=3) good.push('lower mapped fire severity');
+  return good.slice(0,4);
+}
+function renderInsights(st, R, census, amen, liveResults){
+  const top = strongest(R.overall.items);
+  const positives = goodFactors(liveResults, amen);
+  const summary = positives.length
+    ? `This address is strong for ${positives.join(', ')}, while the main watch items are ${top.map(x=>x.name).join(', ') || 'limited in the current live data'}.`
+    : `The main watch items for this address are ${top.map(x=>x.name).join(', ') || 'limited in the current live data'}.`;
+  $('#scoreSummary').innerHTML = `<p>${summary}</p>
+    <div class="insight-chips">
+      <span>${R.overall.band} overall</span>
+      <span>Health ${R.dims.health.band}</span>
+      <span>Property ${R.dims.property.band}</span>
+      <span>Insurance ${R.dims.insurance.band}</span>
+    </div>`;
+  const retail = amen ? amen.eat + amen.shop : null;
+  $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
+    <div><b>${retail}</b><span>Dining / retail</span></div>
+    <div><b>${amen.park}</b><span>Parks</span></div>
+    <div><b>${amen.transit + amen.station}</b><span>Transit points</span></div>
+    <div><b>${amen.health}</b><span>Healthcare</span></div>
+    <div><b>${amen.community}</b><span>Community places</span></div>
+    <div><b>${amen.constr}</b><span>Construction</span></div>
+  </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
+  const entry = {
+    addr: st.display.split(',').slice(0,2).join(','),
+    zip: st.zip || 'n/a',
+    overall: R.overall.band,
+    health: R.dims.health.band,
+    property: R.dims.property.band,
+    insurance: R.dims.insurance.band,
+    flood: liveResults[8] ? liveResults[8].label.replace(' Risk','') : 'Open map',
+    fire: liveResults[11] ? liveResults[11].label.replace(' Risk','') : 'Open map',
+    amenities: retail ?? 'n/a',
+    transit: amen ? amen.transit + amen.station : 'n/a'
+  };
+  COMPARE = [entry, ...COMPARE.filter(x=>x.addr!==entry.addr)].slice(0,3);
+  try{ localStorage.setItem('riskCompare', JSON.stringify(COMPARE)); }catch(e){}
+  $('#compareTray').innerHTML = COMPARE.map((x,i)=>`<div class="compare-card ${i===0?'current':''}">
+    <div class="compare-title">${x.addr}</div>
+    <div class="compare-meta">ZIP ${x.zip} · ${x.overall}</div>
+    <div class="compare-grid"><span>Insurance</span><b>${x.insurance}</b><span>Flood</span><b>${x.flood}</b><span>Fire</span><b>${x.fire}</b><span>Transit</span><b>${x.transit}</b></div>
+  </div>`).join('');
+  const yr=(window.APP_CONFIG||{}).ACS_YEAR||'2023';
+  $('#historySignals').innerHTML = `<div class="timeline-list">
+    <div><b>FEMA flood</b><span>Live point lookup for the current map service.</span></div>
+    <div><b>Fire severity</b><span>Live CAL FIRE service snapshot; historical trend not inferred.</span></div>
+    <div><b>Home value context</b><span>Census ACS ${yr}${census&&census.home?` · median home ${census.home}`:''}.</span></div>
+    <div><b>Construction</b><span>${amen ? amen.constr+' mapped construction feature(s) nearby right now.' : 'Live OSM construction count unavailable.'}</span></div>
+  </div>`;
 }
 
 /* ---------- Coverage (ZIP-specific rollout) ---------- */
@@ -722,10 +808,19 @@ function buildMainMap(st){
   const layerState = {};
   const activeLayers = new Set();
   const toolbar = document.getElementById('mapToolbar');
+  const PRESETS = {
+    flood:['FEMA Flood Zones'],
+    quake:['Liquefaction Zones (CGS)','Landslide Zones (CGS)','Earthquake Fault Zones (CGS)'],
+    fire:['Fire Hazard Severity (CAL FIRE)']
+  };
   const setToolbarActive = () => {
     if(!toolbar) return;
     toolbar.querySelectorAll('[data-layer-name]').forEach(btn=>{
       btn.classList.toggle('active', activeLayers.has(btn.dataset.layerName));
+    });
+    toolbar.querySelectorAll('[data-map-preset]').forEach(btn=>{
+      const names = PRESETS[btn.dataset.mapPreset] || [];
+      btn.classList.toggle('active', names.length && names.every(name=>activeLayers.has(name)));
     });
     toolbar.querySelector('[data-map-action="streets"]')?.classList.toggle('active', map.hasLayer(streets));
     toolbar.querySelector('[data-map-action="imagery"]')?.classList.toggle('active', map.hasLayer(imagery));
@@ -778,6 +873,7 @@ function buildMainMap(st){
       const btn = e.target.closest('button');
       if(!btn) return;
       const action = btn.dataset.mapAction;
+      const preset = btn.dataset.mapPreset;
       const layerName = btn.dataset.layerName;
       if(action==='center'){ map.setView([st.lat, st.lon], 14); marker.openPopup(); }
       if(action==='zoom-in') map.zoomIn();
@@ -785,6 +881,10 @@ function buildMainMap(st){
       if(action==='streets'){ if(map.hasLayer(imagery)) map.removeLayer(imagery); if(!map.hasLayer(streets)) streets.addTo(map); }
       if(action==='imagery'){ if(map.hasLayer(streets)) map.removeLayer(streets); if(!map.hasLayer(imagery)) imagery.addTo(map); }
       if(action==='clear-layers') Object.values(overlays).forEach(layer=>{ if(map.hasLayer(layer)) map.removeLayer(layer); });
+      if(preset && PRESETS[preset]){
+        Object.values(overlays).forEach(layer=>{ if(map.hasLayer(layer)) map.removeLayer(layer); });
+        PRESETS[preset].forEach(name=>{ if(overlays[name] && !map.hasLayer(overlays[name])) overlays[name].addTo(map); });
+      }
       if(layerName && overlays[layerName]){
         map.hasLayer(overlays[layerName]) ? map.removeLayer(overlays[layerName]) : overlays[layerName].addTo(map);
       }
@@ -841,12 +941,13 @@ async function analyze(){
   renderSummaryTable(st, liveResults);
   STATE._live=liveResults;
   const R = renderOverall(liveResults);
+  renderInsights(st, R, census, amen, liveResults);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
   const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
   $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Basemaps © Esri. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
-  STATE._dims=d; STATE._census=census;
+  STATE._dims=d; STATE._census=census; STATE._amen=amen;
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
   }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
