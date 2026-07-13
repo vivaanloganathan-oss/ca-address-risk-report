@@ -784,9 +784,9 @@ const MAP_OVERLAYS = [
     url:'https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Liquefaction_Zones/MapServer', layers:[0], opacity:.55 },
   { name:'Landslide Zones (CGS)',         type:'dynamic',
     url:'https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Landslide_Zones/MapServer', layers:[0], opacity:.55 },
-  { name:'Earthquake Fault Zones (CGS)',  type:'feature',
-    url:'https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Fault_Zones/FeatureServer/0',
-    style:{ color:'#c41e3a', weight:2, fillOpacity:.15 } },
+  { name:'Earthquake Fault Lines (CGS)',  type:'feature',
+    url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Alquist_Priolo_Fault_Traces/FeatureServer/0',
+    style:{ color:'#c41e3a', weight:3, opacity:.9 } },
   { name:'Fire Hazard Severity (CAL FIRE)', type:'dynamic',
     url:'https://services.gis.ca.gov/arcgis/rest/services/Environment/Fire_Severity_Zones/MapServer', opacity:.5 },
 ];
@@ -800,19 +800,6 @@ function buildMainMap(st){
   const overlays = {};
   const layerState = {};
   const activeLayers = new Set();
-  const toolbar = document.getElementById('mapToolbar');
-  const PRESETS = {
-    flood:['FEMA Flood Zones'],
-    quake:['Liquefaction Zones (CGS)','Landslide Zones (CGS)','Earthquake Fault Zones (CGS)'],
-    fire:['Fire Hazard Severity (CAL FIRE)']
-  };
-  const setToolbarActive = () => {
-    if(!toolbar) return;
-    toolbar.querySelectorAll('[data-map-preset]').forEach(btn=>{
-      const names = PRESETS[btn.dataset.mapPreset] || [];
-      btn.classList.toggle('active', names.length && names.every(name=>activeLayers.has(name)));
-    });
-  };
   function refreshLayerStatus(){
     const el=document.getElementById('layerStatus'); if(!el) return;
     const bad=Object.entries(layerState).filter(([,v])=>v===false).map(([k])=>k);
@@ -823,7 +810,6 @@ function buildMainMap(st){
       ? `<div>⚠ Couldn't load from the agency server: <b>${bad.join('</b> · <b>')}</b> — re-toggle the layer or try again shortly.</div>`
       : '';
     el.innerHTML = activeHtml + badHtml;
-    setToolbarActive();
   }
   if(window.L && window.L.esri){
     MAP_OVERLAYS.forEach(o=>{
@@ -847,20 +833,6 @@ function buildMainMap(st){
   map.on('baselayerchange overlayadd overlayremove', refreshLayerStatus);
   L.control.scale({imperial:true}).addTo(map);
   marker = L.marker([st.lat, st.lon]).addTo(map).bindPopup(st.display).openPopup();
-  if(toolbar){
-    toolbar.onclick = e=>{
-      const btn = e.target.closest('button');
-      if(!btn) return;
-      const action = btn.dataset.mapAction;
-      const preset = btn.dataset.mapPreset;
-      if(action==='clear-layers') Object.values(overlays).forEach(layer=>{ if(map.hasLayer(layer)) map.removeLayer(layer); });
-      if(preset && PRESETS[preset]){
-        Object.values(overlays).forEach(layer=>{ if(map.hasLayer(layer)) map.removeLayer(layer); });
-        PRESETS[preset].forEach(name=>{ if(overlays[name] && !map.hasLayer(overlays[name])) overlays[name].addTo(map); });
-      }
-      refreshLayerStatus();
-    };
-  }
   refreshLayerStatus();
 }
 

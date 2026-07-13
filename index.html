@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="styles.css?v=16"/>
+<link rel="stylesheet" href="styles.css?v=17"/>
 </head>
 <body>
 
@@ -47,14 +47,8 @@
       </div>
       <div class="summary-grid hero-grid">
         <div class="mapcol">
-          <div class="map-toolbar" id="mapToolbar" aria-label="Map controls">
-            <button type="button" data-map-preset="flood">Flood</button>
-            <button type="button" data-map-preset="quake">Earthquake</button>
-            <button type="button" data-map-preset="fire">Fire</button>
-            <button type="button" data-map-action="clear-layers">Clear Layers</button>
-          </div>
           <div id="map"></div>
-          <div class="map-hint">Live hazard map — toggle FEMA flood, CGS liquefaction / landslide / fault zones and CAL FIRE severity layers (top-right), switch Streets/Imagery, pan &amp; zoom. <b>Tip:</b> several agency layers only draw at neighborhood zoom — if a checked layer looks empty, zoom in.</div>
+          <div class="map-hint">Live hazard map — toggle FEMA flood, CGS liquefaction / landslide / fault lines and CAL FIRE severity layers (top-right), switch Streets/Imagery, pan &amp; zoom. <b>Tip:</b> several agency layers only draw at neighborhood zoom — if a checked layer looks empty, zoom in.</div>
           <div id="layerStatus" class="layer-status"></div>
         </div>
         <div class="riskcol">
@@ -142,7 +136,7 @@
 <script src="config.js?v=6"></script>
 <script src="factors.js?v=6"></script>
 <script src="explanations.js?v=6"></script>
-<script src="app.js?v=19"></script>
+<script src="app.js?v=21"></script>
 <div id="xmodal" class="xmodal hidden" role="dialog" aria-modal="true">
   <div class="xmodal-card">
     <div class="xmodal-head"><h3 id="xmodalTitle"></h3><button id="xmodalClose" aria-label="Close">×</button></div>
