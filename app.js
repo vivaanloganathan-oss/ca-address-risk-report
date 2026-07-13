@@ -303,8 +303,8 @@ function renderSummaryTable(st, liveResults){
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
     const mapUrl=fill(f.map, st);
-    const risk = live
-      ? `${live.label.replace(' Risk','')} · ${live.score}/10<br><a class="rk-link rk-maplink" href="${mapUrl}" target="_blank" rel="noopener">Map ↗</a>`
+    const links = live
+      ? `<a class="rk-link rk-maplink" href="${mapUrl}" target="_blank" rel="noopener">Map ↗</a>`
       : `<a class="rk-link" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -313,7 +313,7 @@ function renderSummaryTable(st, liveResults){
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${f.cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
-      <td class="rk rk-${rk}">${risk}</td>
+      <td class="rk rk-${rk}">${links}</td>
     </tr>`;
   }).join('');
   $('#summaryTable').innerHTML =
@@ -321,7 +321,7 @@ function renderSummaryTable(st, liveResults){
        <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
      <thead><tr>
        <th>#</th><th>Factor</th><th>What it is</th>
-       <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Risk</th>
+       <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
      </tr></thead><tbody>${rows}</tbody>`;
   buildGlanceControls();
   wireImpactLinks();
