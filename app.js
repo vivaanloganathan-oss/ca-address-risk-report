@@ -290,6 +290,14 @@ function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
   const cell = o => `<td class="impcell">${lvlPill(o.level)}<span class="w">${o.why}</span></td>`;
+  const whatCell = (f, what) => {
+    const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
+    if(!imgs.length) return what;
+    const summary = imgs.map((s,i)=>`<img src="${s}" loading="lazy" alt="${f.name} explanation ${i+1}"/>`).join('');
+    return `${what}
+      <button class="impact-link" type="button" data-n="${f.n}" aria-expanded="false" aria-controls="explain-${f.n}">Read more</button>
+      <div class="inline-explain hidden" id="explain-${f.n}">${summary}</div>`;
+  };
   const rows = FACTORS.map(f=>{
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
@@ -304,7 +312,7 @@ function renderSummaryTable(st, liveResults){
     return `<tr id="sumrow-${f.n}" data-cat="${f.cat}" data-name="${(f.name+' '+f.cat).toLowerCase()}" data-risk="${rowRisk}">
       <td class="num">${f.n}</td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${f.cat}</div></td>
-      <td class="what">${what}</td>
+      <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${risk}</td>
     </tr>`;
@@ -349,14 +357,16 @@ window.FACTOR_EXPLAIN = window.FACTOR_EXPLAIN || {
   33: ["explanations/f33_1.jpg", "explanations/f33_2.jpg", "explanations/f33_3.jpg", "explanations/f33_4.jpg"],
 };
 
-/* ---------- Impact summary modal (from factor-explanation workbooks) ---------- */
+/* ---------- Inline impact summaries (from factor-explanation workbooks) ---------- */
 function wireImpactLinks(){
-  document.querySelectorAll('#summaryTable .impact-link').forEach(a=>a.addEventListener('click',e=>{
+  document.querySelectorAll('#summaryTable .impact-link').forEach(btn=>btn.addEventListener('click',e=>{
     e.preventDefault();
-    const n=+a.dataset.n, imgs=(window.FACTOR_EXPLAIN||{})[n]||[];
-    $('#xmodalTitle').textContent = a.dataset.name + ' — impact summary';
-    $('#xmodalBody').innerHTML = imgs.map(s=>`<img src="${s}" loading="lazy" alt="impact summary"/>`).join('');
-    $('#xmodal').classList.remove('hidden');
+    const panel = document.getElementById(`explain-${btn.dataset.n}`);
+    if(!panel) return;
+    const isOpen = !panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', isOpen);
+    btn.setAttribute('aria-expanded', String(!isOpen));
+    btn.textContent = isOpen ? 'Read more' : 'Show less';
   }));
 }
 (function(){
