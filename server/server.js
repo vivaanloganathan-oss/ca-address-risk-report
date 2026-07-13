@@ -195,7 +195,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v12-combined-amenities'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v13-amenity-mirrors'; // bump when editing; check at GET /
 
 function emptyAmenityCounts() {
   return { uni: 0, eat: 0, shop: 0, park: 0, health: 0, hosp: 0, transit: 0, station: 0, junction: 0, constr: 0, community: 0 };
@@ -240,17 +240,30 @@ function countAmenityElements(elements = []) {
 async function amenityCounts(lat, lon) {
   const q = amenityQuery(lat, lon);
   const body = new URLSearchParams({ data: q });
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-      'User-Agent': `ca-address-risk-report/${SERVER_VERSION}`,
-    },
-    body,
-  });
-  if (!res.ok) throw new Error(`Overpass ${res.status}`);
-  const json = await res.json();
-  return countAmenityElements(json?.elements || []);
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter',
+  ];
+  const errors = [];
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          'User-Agent': `ca-address-risk-report/${SERVER_VERSION}`,
+        },
+        body,
+      });
+      if (!res.ok) throw new Error(`${endpoint} ${res.status}`);
+      const json = await res.json();
+      return countAmenityElements(json?.elements || []);
+    } catch (e) {
+      errors.push(String(e.message || e));
+    }
+  }
+  throw new Error(errors.join(' | '));
 }
 
 // A single unhandled rejection kills modern Node outright — which shows up in

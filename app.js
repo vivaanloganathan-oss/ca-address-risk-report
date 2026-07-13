@@ -248,7 +248,7 @@ async function overpassAmenitiesDirect(lat,lon){
     nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];
   );out tags qt 600;`;
   try{
-    const res=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q});
+    const res=await fetchWithAbort('https://overpass-api.de/api/interpreter',{method:'POST',body:q}, 12000);
     if(!res.ok) return null;
     const j=await res.json();
     const c={uni:0,eat:0,shop:0,park:0,health:0,hosp:0,transit:0,station:0,junction:0,constr:0,community:0};
@@ -274,7 +274,7 @@ async function overpassAmenitiesBackend(lat,lon){
   try{
     const res = await fetchWithAbort(`${base}/api/amenities?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, {
       headers:{'Accept':'application/json'}
-    }, 18000);
+    }, 12000);
     if(!res.ok) return null;
     const j = await res.json();
     return j && j.counts ? j.counts : null;
@@ -745,6 +745,7 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
+  if(!amen) amen = emptyAmenityCounts();
   const retail = amen ? amen.eat + amen.shop : null;
   $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
     <div><b>${retail}</b><span>Dining / retail</span></div>
