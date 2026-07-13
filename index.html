@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="styles.css?v=27"/>
+<link rel="stylesheet" href="styles.css?v=28"/>
 </head>
 <body>
 
@@ -101,12 +101,18 @@
           </div>
         </div>
         <div class="glance-controls">
-          <div class="filters" id="glanceCats"></div>
-          <div class="gc-right">
-            <input id="glanceSearch" type="text" placeholder="Filter factors... (e.g. fire, transit)"/>
-            <button id="sortNum" class="fchip active">Order 1-45</button>
-            <button id="sortRisk" class="fchip">Highest risk first</button>
-            <span class="hint" id="glanceCount"></span>
+          <div class="filter-group">
+            <span class="mini-label">Factor groups</span>
+            <div class="filters" id="glanceCats"></div>
+          </div>
+          <div class="tool-group">
+            <span class="mini-label">Find and sort</span>
+            <div class="gc-right">
+              <input id="glanceSearch" type="text" placeholder="Filter factors..."/>
+              <button id="sortNum" class="fchip active">Order 1-45</button>
+              <button id="sortRisk" class="fchip">Highest risk first</button>
+              <span class="hint" id="glanceCount"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -142,7 +148,7 @@
 <script src="config.js?v=16"></script>
 <script src="factors.js?v=8"></script>
 <script src="explanations.js?v=7"></script>
-<script src="app.js?v=35"></script>
+<script src="app.js?v=36"></script>
 <div id="xmodal" class="xmodal hidden" role="dialog" aria-modal="true">
   <div class="xmodal-card">
     <div class="xmodal-head"><h3 id="xmodalTitle"></h3><button id="xmodalClose" aria-label="Close">×</button></div>

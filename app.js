@@ -384,6 +384,7 @@ function renderSummaryTable(st, liveResults){
   };
   SUMMARY_ITEMS = {};
   const rows = FACTORS.map(f=>{
+    const cat = f.cat || 'Other';
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
@@ -394,9 +395,9 @@ function renderSummaryTable(st, liveResults){
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
-    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${f.cat}" data-name="${(f.name+' '+f.cat).toLowerCase()}" data-risk="${rowRisk}" tabindex="0" role="button" aria-label="Show details for ${f.name}">
+    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}" tabindex="0" role="button" aria-label="Show details for ${f.name}">
       <td class="num">${f.n}</td>
-      <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${f.cat}</div></td>
+      <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${links}</td>
@@ -592,7 +593,7 @@ function applyGlanceFilters(){
 function buildGlanceControls(){
   GLANCE={cat:'*', q:'', sort:'num'};
   const box=$('#glanceCats'); if(!box) return;
-  const cats=[...new Set(FACTORS.map(f=>f.cat))];
+  const cats=[...new Set(FACTORS.map(f=>f.cat || 'Other'))];
   box.innerHTML = `<button class="fchip active" data-cat="*">All ${FACTORS.length}</button>`
     + cats.map(c=>`<button class="fchip" data-cat="${c}">${c}</button>`).join('');
   box.querySelectorAll('.fchip').forEach(b=>b.addEventListener('click',()=>{
