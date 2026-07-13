@@ -264,6 +264,24 @@ async function overpassAmenities(lat,lon){
   }catch(e){ return null; }
 }
 
+async function localEnvironment(lat, lon){
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+    + `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code`
+    + `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+  const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}`
+    + `&current=us_aqi,pm2_5,ozone&timezone=auto`;
+  try{
+    const [weatherRes, airRes] = await Promise.allSettled([
+      fetch(weatherUrl).then(r=>r.ok?r.json():null),
+      fetch(airUrl).then(r=>r.ok?r.json():null)
+    ]);
+    return {
+      weather: weatherRes.status === 'fulfilled' ? weatherRes.value : null,
+      air: airRes.status === 'fulfilled' ? airRes.value : null
+    };
+  }catch(e){ return null; }
+}
+
 function livabilityResults(c, census){
   const out={};
   if(c){
@@ -715,6 +733,60 @@ function renderInsights(st, R, census, amen, liveResults){
   </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
 }
 
+function aqiLabel(aqi){
+  if(aqi == null || Number.isNaN(+aqi)) return {label:'Unavailable', key:'unknown', pct:0, note:'Air-quality data is unavailable for this address right now.'};
+  if(aqi <= 50) return {label:'Good', key:'good', pct:Math.max(8, aqi), note:'Air quality is generally suitable for outdoor activity.'};
+  if(aqi <= 100) return {label:'Moderate', key:'mod', pct:aqi, note:'Air quality is acceptable; sensitive groups may notice minor effects.'};
+  if(aqi <= 150) return {label:'Sensitive', key:'sensitive', pct:aqi, note:'Sensitive groups should consider reducing prolonged outdoor exertion.'};
+  return {label:'Unhealthy', key:'bad', pct:Math.min(100, aqi/2), note:'Air quality may affect health; reduce outdoor exposure.'};
+}
+function windDirection(deg){
+  if(deg == null || Number.isNaN(+deg)) return 'n/a';
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round((+deg % 360) / 45) % 8];
+}
+function weatherText(code){
+  const c = +code;
+  if([0].includes(c)) return 'Clear';
+  if([1,2,3].includes(c)) return 'Clouds';
+  if([45,48].includes(c)) return 'Fog';
+  if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(c)) return 'Rain';
+  if([71,73,75,77,85,86].includes(c)) return 'Snow';
+  if([95,96,99].includes(c)) return 'Storm';
+  return 'Weather';
+}
+function renderEnvironment(env){
+  const host = $('#environmentSnapshot'); if(!host) return;
+  if(!env || (!env.weather && !env.air)){
+    host.innerHTML = '<p>Live air and weather data could not be loaded for this run.</p>';
+    return;
+  }
+  const w = (env.weather && env.weather.current) || {};
+  const a = (env.air && env.air.current) || {};
+  const aqi = a.us_aqi == null ? null : Math.round(+a.us_aqi);
+  const aq = aqiLabel(aqi);
+  const temp = w.temperature_2m == null ? 'n/a' : `${Math.round(+w.temperature_2m)}°F`;
+  const wind = w.wind_speed_10m == null ? 'n/a' : `${Math.round(+w.wind_speed_10m)} mph ${windDirection(w.wind_direction_10m)}`;
+  const humid = w.relative_humidity_2m == null ? 'n/a' : `${Math.round(+w.relative_humidity_2m)}%`;
+  const pm = a.pm2_5 == null ? 'n/a' : `${(+a.pm2_5).toFixed(1)}`;
+  const ozone = a.ozone == null ? 'n/a' : `${Math.round(+a.ozone)}`;
+  host.innerHTML = `<div class="envgrid">
+    <div class="aqi-card ${aq.key}">
+      <div class="aqi-ring" style="--p:${Math.min(100, aq.pct)}"><span>${aqi ?? 'n/a'}</span></div>
+      <div><b>${aq.label}</b><span>US AQI</span></div>
+    </div>
+    <div class="weather-chips">
+      <div><b>${temp}</b><span>${weatherText(w.weather_code)}</span></div>
+      <div><b>${wind}</b><span>Wind</span></div>
+      <div><b>${humid}</b><span>Humidity</span></div>
+    </div>
+    <div class="pollutants">
+      <span><b>${pm}</b> PM2.5 µg/m³</span>
+      <span><b>${ozone}</b> Ozone µg/m³</span>
+    </div>
+    <p>${aq.note}</p>
+  </div>`;
+}
+
 /* ---------- Coverage (ZIP-specific rollout) ---------- */
 const ZIP_CITY = { '94582':'San Ramon', '94583':'San Ramon', '94506':'Danville', '94526':'Danville' };
 const LOCAL_NOTES_BY_CITY = {
@@ -874,11 +946,11 @@ async function analyze(){
   renderProfile(null, st);
 
   // live lookups in parallel (hazards + livability)
-  const [census, flood, liq, lands, fault, fhsz, amen] = await Promise.all([
+  const [census, flood, liq, lands, fault, fhsz, amen, env] = await Promise.all([
     censusByZip(st.zip), femaFloodZone(st.lat, st.lon),
     cgsLiquefaction(st.lat, st.lon), cgsLandslide(st.lat, st.lon),
     cgsFault(st.lat, st.lon), calfireFHSZ(st.lat, st.lon),
-    overpassAmenities(st.lat, st.lon)
+    overpassAmenities(st.lat, st.lon), localEnvironment(st.lat, st.lon)
   ]);
   renderProfile(census, st);
   if(flood){ liveResults[8]=flood; }
@@ -895,9 +967,10 @@ async function analyze(){
   STATE._live=liveResults;
   const R = renderOverall(liveResults);
   renderInsights(st, R, census, amen, liveResults);
+  renderEnvironment(env);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
   const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
-  $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Basemaps © Esri. `
+  $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather/Air: Open-Meteo · Basemaps © Esri. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
   STATE._dims=d; STATE._census=census; STATE._amen=amen;

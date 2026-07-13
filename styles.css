@@ -75,6 +75,21 @@ h1,h2,h3{margin:0}
 .snapgrid div{background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:9px}
 .snapgrid b{display:block;font-size:18px;line-height:1.1}
 .snapgrid span{display:block;color:var(--muted);font-size:10.5px;font-weight:700;margin-top:4px}
+.envgrid{display:grid;gap:10px}
+.aqi-card{display:flex;align-items:center;gap:12px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:10px}
+.aqi-card b{display:block;font-size:18px;line-height:1.1;color:var(--ink)}
+.aqi-card span{display:block;color:var(--muted);font-size:10.5px;font-weight:800;margin-top:4px;text-transform:uppercase;letter-spacing:.45px}
+.aqi-ring{--p:0;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#2e8b57 calc(var(--p)*1%), #e7edf5 0);position:relative;flex:none}
+.aqi-ring::after{content:"";position:absolute;inset:7px;border-radius:50%;background:#fff}
+.aqi-ring span{position:relative;z-index:1;color:var(--ink);font-size:17px;font-weight:900;margin:0;letter-spacing:0;text-transform:none}
+.aqi-card.mod .aqi-ring{background:conic-gradient(#e08a00 calc(var(--p)*1%), #e7edf5 0)}
+.aqi-card.sensitive .aqi-ring,.aqi-card.bad .aqi-ring{background:conic-gradient(#c41e3a calc(var(--p)*1%), #e7edf5 0)}
+.weather-chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.weather-chips div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;min-width:0}
+.weather-chips b{display:block;color:var(--ink);font-size:13px;line-height:1.15;overflow-wrap:anywhere}
+.weather-chips span{display:block;color:var(--muted);font-size:10px;font-weight:800;margin-top:4px}
+.pollutants{display:flex;gap:8px;flex-wrap:wrap}
+.pollutants span{background:#f3f6fb;border:1px solid var(--line);border-radius:999px;color:#42526b;font-size:11px;font-weight:800;padding:5px 8px}
 .compare-card{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;background:#f8fafd}
 .compare-card.current{border-color:#bcd1fb;background:#f2f7ff}
 .compare-title{font-size:12px;font-weight:800;color:var(--ink)}
