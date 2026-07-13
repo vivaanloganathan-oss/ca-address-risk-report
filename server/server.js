@@ -195,7 +195,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v15-amenity-974fb3b-cache'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v16-amenity-fresh-search'; // bump when editing; check at GET /
 
 function emptyAmenityCounts() {
   return { uni: 0, eat: 0, shop: 0, park: 0, health: 0, hosp: 0, transit: 0, station: 0, junction: 0, constr: 0, community: 0 };
@@ -283,9 +283,9 @@ async function amenityCountsLive(lat, lon) {
   throw new Error(errors.join(' | '));
 }
 
-async function amenityCounts(lat, lon) {
+async function amenityCounts(lat, lon, fresh = false) {
   const file = amenityCacheFile(lat, lon);
-  if (fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs < CACHE_TTL_MS) {
+  if (!fresh && fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs < CACHE_TTL_MS) {
     return { counts: JSON.parse(fs.readFileSync(file, 'utf8')), cached: true };
   }
   const counts = await amenityCountsLive(lat, lon);
@@ -306,9 +306,10 @@ app.get('/', (req, res) => res.send(
 app.get('/healthz', (req, res) => res.send('ok'));
 
 app.get('/api/amenities', async (req, res) => {
-  res.set('Cache-Control', 'public, max-age=900');
+  res.set('Cache-Control', 'no-store');
   const lat = Number(req.query.lat);
   const lon = Number(req.query.lon);
+  const fresh = req.query.fresh === '1' || req.query.fresh === 'true';
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return res.status(400).json({ error: 'missing_or_invalid_lat_lon' });
   }
@@ -316,7 +317,7 @@ app.get('/api/amenities', async (req, res) => {
     return res.status(400).json({ error: 'coordinates_outside_california_bounds' });
   }
   try {
-    const result = await amenityCounts(lat.toFixed(6), lon.toFixed(6));
+    const result = await amenityCounts(lat.toFixed(6), lon.toFixed(6), fresh);
     res.json({ counts: result.counts, cached: result.cached, source: 'OpenStreetMap Overpass', server: SERVER_VERSION });
   } catch (e) {
     res.status(502).json({ error: 'amenity_counts_failed', detail: String(e.message || e) });

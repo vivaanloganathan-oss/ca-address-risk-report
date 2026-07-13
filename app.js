@@ -248,8 +248,10 @@ async function overpassAmenitiesBackend(lat,lon){
   const base = ((window.APP_CONFIG||{}).MAPSHOT_API_BASE || '').replace(/\/+$/,'');
   if(!base) return null;
   try{
-    const res = await fetchWithAbort(`${base}/api/amenities?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, {
-      headers:{'Accept':'application/json'}
+    const cacheBust = `${ANALYZE_RUN}-${Date.now()}`;
+    const res = await fetchWithAbort(`${base}/api/amenities?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&fresh=1&_=${encodeURIComponent(cacheBust)}`, {
+      headers:{'Accept':'application/json','Cache-Control':'no-cache'},
+      cache:'no-store'
     }, 22000);
     if(!res.ok) return null;
     const j = await res.json();
@@ -378,13 +380,14 @@ function renderSummaryTable(st, liveResults){
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
     const mapUrl=fill(f.map, st);
-    const links = `<button class="rk-link detail-open" type="button" aria-label="Open details for ${f.name}">Open</button>`;
+    const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
+    const links = `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open</a>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
-    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}" tabindex="0" role="button" aria-label="Show details for ${f.name}">
-      <td class="num">${f.n}</td>
+    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
+      <td class="num">${detailBtn}<span>${f.n}</span></td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
@@ -530,15 +533,10 @@ function selectVisibleFactor(){
 }
 
 function wireSummaryRows(){
-  document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
-    row.addEventListener('click',e=>{
-      if(e.target.closest('.impact-link')) return;
-      openFactorModal(+row.id.slice(7));
-    });
-    row.addEventListener('keydown',e=>{
-      if(e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-      openFactorModal(+row.id.slice(7));
+  document.querySelectorAll('#summaryTable .detail-arrow').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      openFactorModal(+btn.dataset.detail);
     });
   });
 }

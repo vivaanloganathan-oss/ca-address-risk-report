@@ -142,10 +142,12 @@ table.sumtable thead th{background:var(--navy);color:#fff;text-align:left;paddin
 table.sumtable td{padding:11px 12px;border-bottom:1px solid #eef2f7;vertical-align:top}
 table.sumtable tr:last-child td{border-bottom:0}
 table.sumtable tbody tr:hover{background:#f7faff}
-table.sumtable tbody tr.summary-row{cursor:pointer}
 table.sumtable tbody tr.selected{background:#eef5ff;box-shadow:inset 4px 0 0 var(--accent)}
 table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35);outline-offset:-2px}
-.sumtable .num{color:var(--muted);font-weight:700;width:30px}
+.sumtable .num{color:var(--muted);font-weight:700;width:30px;display:flex;align-items:center;gap:7px}
+.detail-arrow{appearance:none;border:0;background:#eaf1ff;color:var(--accent);border-radius:8px;width:27px;height:27px;display:inline-grid;place-items:center;font-size:18px;line-height:1;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:inset 0 0 0 1px #cfe0ff}
+.detail-arrow:hover{background:var(--accent);color:#fff;box-shadow:none}
+.detail-arrow:focus{outline:2px solid rgba(47,109,246,.35);outline-offset:2px}
 .sumtable .fname{font-weight:700;color:var(--ink);white-space:nowrap}
 .sumtable .fcat{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#8a98ab;font-weight:600}
 .sumtable .what{color:#475468}
@@ -154,8 +156,8 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
 .sumtable .impcell .w{display:block;color:#475468;font-size:11px;line-height:1.4}
 .sumtable .rk{font-weight:800;white-space:nowrap}
 .rk-no{color:var(--no)}.rk-low{color:var(--low)}.rk-mod{color:var(--mod)}.rk-high{color:var(--high)}.rk-pending{color:#8a98ab}
-.rk .rk-link{appearance:none;background:transparent;border:0;border-bottom:1px dashed currentColor;color:inherit;cursor:pointer;font:inherit;font-weight:800;padding:0;text-decoration:none}
-.rk .rk-link:hover{opacity:.7;border-bottom-style:solid}
+.rk .rk-link{appearance:none;background:transparent;border:0;border-bottom:1px solid currentColor;color:#1268ff;cursor:pointer;font:inherit;font-weight:900;padding:0;text-decoration:none}
+.rk .rk-link:hover{color:#004bd6;border-bottom-width:2px}
 
 /* ---------- MAP SHOTS ---------- */
 .mapshots{margin-top:30px}
