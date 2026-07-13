@@ -76,12 +76,6 @@ h1,h2,h3{margin:0}
 .snapgrid b{display:block;font-size:18px;line-height:1.1}
 .snapgrid span{display:block;color:var(--muted);font-size:10.5px;font-weight:700;margin-top:4px}
 .snapnote{margin-top:10px!important;font-size:11.5px!important;color:var(--muted)!important}
-.snap-unavailable{border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafd;padding:14px}
-.snap-unavailable b{display:block;font-size:14px;color:var(--ink);margin-bottom:5px}
-.snap-unavailable p{font-size:12.5px!important;color:#66748a!important}
-.snap-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
-.snap-actions button,.snap-actions a{border:1px solid #d4dbe6;border-radius:999px;background:#fff;color:#42526b;font:inherit;font-size:12px;font-weight:800;padding:7px 11px;text-decoration:none;cursor:pointer}
-.snap-actions button:hover,.snap-actions a:hover{background:#eef5ff;border-color:#bcd1fb;text-decoration:none}
 .envgrid{display:grid;gap:10px}
 .aqi-card{display:flex;align-items:center;gap:12px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:10px}
 .aqi-card b{display:block;font-size:18px;line-height:1.1;color:var(--ink)}

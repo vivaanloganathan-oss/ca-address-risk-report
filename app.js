@@ -287,8 +287,7 @@ async function overpassAmenitiesBackend(lat,lon){
 async function overpassAmenities(st){
   const lat = st.lat, lon = st.lon;
   const live = await overpassAmenitiesDirect(lat,lon) || await overpassAmenitiesBackend(lat,lon);
-  if(amenityTotal(live) > 0) return live;
-  return live || emptyAmenityCounts();
+  return amenityTotal(live) > 0 ? live : null;
 }
 
 async function localEnvironment(lat, lon){
@@ -750,22 +749,7 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
-  const hasCounts = amenityTotal(amen) > 0 && !(amen && amen._fallback);
-  if(!hasCounts){
-    const q = encodeURIComponent(`amenities near ${st.display || `${st.lat},${st.lon}`}`);
-    $('#neighborhoodSnapshot').innerHTML = `<div class="snap-unavailable">
-      <b>Live amenity counts unavailable</b>
-      <p>OpenStreetMap did not return verified neighborhood counts for this run. No placeholder counts are shown.</p>
-      <div class="snap-actions">
-        <button type="button" id="snapRetry">Retry counts</button>
-        <a href="https://www.openstreetmap.org/search?query=${q}" target="_blank" rel="noopener">Open OSM</a>
-      </div>
-    </div>`;
-    const retry = document.getElementById('snapRetry');
-    if(retry && STATE) retry.addEventListener('click', analyze);
-    return;
-  }
-  const retail = amen.eat + amen.shop;
+  const retail = amen ? amen.eat + amen.shop : null;
   $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
     <div><b>${retail}</b><span>Dining / retail</span></div>
     <div><b>${amen.park}</b><span>Parks</span></div>
@@ -997,8 +981,6 @@ async function analyze(){
   renderProfile(null, st);
   renderSummaryTable(st, liveResults);
   renderInsightLoading();
-  const instantAmen = emptyAmenityCounts();
-  renderInsights(st, null, null, instantAmen, liveResults);
 
   // live lookups in parallel (hazards + livability)
   const safe = (p, label) => p.catch(e => { console.warn(`${label} lookup failed`, e); return null; });
@@ -1019,22 +1001,21 @@ async function analyze(){
   if(lands){ liveResults[7]=lands; }
   if(fault){ liveResults[5]=fault; }
   if(fhsz){ liveResults[11]=fhsz; }
-  const finalAmen = amenityTotal(amen) > 0 ? amen : instantAmen;
-  Object.assign(liveResults, livabilityResults(finalAmen, census));
+  Object.assign(liveResults, livabilityResults(amen, census));
   if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`}; }
 
   // summary view (table) + overall risk score
   renderSummaryTable(st, liveResults);
   STATE._live=liveResults;
   const R = renderOverall(liveResults);
-  renderInsights(st, R, census, finalAmen, liveResults);
+  renderInsights(st, R, census, amen, liveResults);
   renderEnvironment(env);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
   const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
   $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding & basemap © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather/Air: Open-Meteo. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
-  STATE._dims=d; STATE._census=census; STATE._amen=finalAmen; STATE._env=env; STATE._risk=R;
+  STATE._dims=d; STATE._census=census; STATE._amen=amen; STATE._env=env; STATE._risk=R;
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
   }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
