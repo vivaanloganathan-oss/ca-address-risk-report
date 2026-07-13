@@ -229,7 +229,10 @@ async function calfireFHSZ(lat,lon){
 }
 
 /* ---------- Live livability lookups (OpenStreetMap Overpass) ---------- */
-async function overpassAmenities(lat,lon){
+function emptyAmenityCounts(){
+  return {uni:0,eat:0,shop:0,park:0,health:0,hosp:0,transit:0,station:0,junction:0,constr:0,community:0,_fallback:true};
+}
+async function overpassAmenitiesDirect(lat,lon){
   const q=`[out:json][timeout:25];(
     nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];
     nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];
@@ -264,6 +267,23 @@ async function overpassAmenities(lat,lon){
     });
     return c;
   }catch(e){ return null; }
+}
+async function overpassAmenitiesBackend(lat,lon){
+  const base = ((window.APP_CONFIG||{}).MAPSHOT_API_BASE || '').replace(/\/+$/,'');
+  if(!base) return null;
+  try{
+    const res = await fetchWithAbort(`${base}/api/amenities?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`, {
+      headers:{'Accept':'application/json'}
+    }, 18000);
+    if(!res.ok) return null;
+    const j = await res.json();
+    return j && j.counts ? j.counts : null;
+  }catch(e){ return null; }
+}
+async function overpassAmenities(lat,lon){
+  return await overpassAmenitiesBackend(lat,lon)
+      || await overpassAmenitiesDirect(lat,lon)
+      || emptyAmenityCounts();
 }
 
 async function localEnvironment(lat, lon){
@@ -733,7 +753,7 @@ function renderInsights(st, R, census, amen, liveResults){
     <div><b>${amen.health}</b><span>Healthcare</span></div>
     <div><b>${amen.community}</b><span>Community places</span></div>
     <div><b>${amen.constr}</b><span>Construction</span></div>
-  </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
+  </div>${amen._fallback ? '<p class="snapnote">OpenStreetMap counts did not respond in time. Showing 0 until live counts load successfully.</p>' : ''}` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
 }
 
 function aqiLabel(aqi){

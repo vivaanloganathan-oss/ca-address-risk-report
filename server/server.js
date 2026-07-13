@@ -195,7 +195,54 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v10-queue'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v11-amenities'; // bump when editing; check at GET /
+
+const AMENITY_QUERIES = {
+  eat: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];`,
+  shop: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[shop];`,
+  park: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];`,
+  health: ({ lat, lon }) => `nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];`,
+  hosp: ({ lat, lon }) => `nwr(around:2000,${lat},${lon})[amenity=hospital];`,
+  transit: ({ lat, lon }) => `nwr(around:1200,${lat},${lon})[highway=bus_stop];nwr(around:1200,${lat},${lon})[public_transport=platform];`,
+  station: ({ lat, lon }) => `nwr(around:3000,${lat},${lon})[railway=station];`,
+  junction: ({ lat, lon }) => `nwr(around:4000,${lat},${lon})[highway=motorway_junction];`,
+  constr: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[landuse=construction];nwr(around:1500,${lat},${lon})[building=construction];`,
+  community: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];`,
+  uni: ({ lat, lon }) => `nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];`,
+};
+
+async function overpassCount(lat, lon, expr) {
+  const q = `[out:json][timeout:14];(${expr({ lat, lon })});out count;`;
+  const body = new URLSearchParams({ data: q });
+  const res = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+      'User-Agent': `ca-address-risk-report/${SERVER_VERSION}`,
+    },
+    body,
+  });
+  if (!res.ok) throw new Error(`Overpass ${res.status}`);
+  const json = await res.json();
+  return Number(json?.elements?.[0]?.tags?.total || 0);
+}
+
+async function amenityCounts(lat, lon) {
+  const counts = Object.fromEntries(Object.keys(AMENITY_QUERIES).map(k => [k, 0]));
+  const entries = await Promise.allSettled(
+    Object.entries(AMENITY_QUERIES).map(async ([key, expr]) => [key, await overpassCount(lat, lon, expr)])
+  );
+  let ok = 0;
+  for (const item of entries) {
+    if (item.status === 'fulfilled') {
+      const [key, count] = item.value;
+      counts[key] = count;
+      ok++;
+    }
+  }
+  if (!ok) throw new Error('No Overpass counts returned');
+  return counts;
+}
 
 // A single unhandled rejection kills modern Node outright — which shows up in
 // Render as a silent "Instance restarted" with no error output. Log instead.
@@ -204,10 +251,28 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 
 app.get('/', (req, res) => res.send(
   `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
-  `Endpoints: /healthz | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
+  `Endpoints: /healthz | /api/amenities?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
 ));
 
 app.get('/healthz', (req, res) => res.send('ok'));
+
+app.get('/api/amenities', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=900');
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return res.status(400).json({ error: 'missing_or_invalid_lat_lon' });
+  }
+  if (lat < 32 || lat > 43 || lon < -125 || lon > -113) {
+    return res.status(400).json({ error: 'coordinates_outside_california_bounds' });
+  }
+  try {
+    const counts = await amenityCounts(lat.toFixed(6), lon.toFixed(6));
+    res.json({ counts, source: 'OpenStreetMap Overpass', server: SERVER_VERSION });
+  } catch (e) {
+    res.status(502).json({ error: 'amenity_counts_failed', detail: String(e.message || e) });
+  }
+});
 
 // Concurrency guard: each capture runs a Chromium page. Unlimited parallel
 // requests (e.g. a page load requesting all 17 factors) would exhaust memory.
