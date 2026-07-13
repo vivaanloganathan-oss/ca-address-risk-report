@@ -749,22 +749,22 @@ const MAP_OVERLAYS = [
     url:'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28',
     where:"SFHA_TF = 'T'",
     style:{ color:'#0969da', weight:1.5, opacity:.8, fillColor:'#4dabf7', fillOpacity:.28 } },
-  { name:'Liquefaction Zones (CGS)',      type:'feature',
+  { name:'Liquefaction Zones (CGS)',      type:'feature', on:true,
     url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Liquefaction_Zones/FeatureServer/0',
     style:{ color:'#d97706', weight:1, opacity:.85, fillColor:'#f59e0b', fillOpacity:.25 } },
-  { name:'Landslide Zones (CGS)',         type:'feature',
+  { name:'Landslide Zones (CGS)',         type:'feature', on:true,
     url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Landslide_Zones/FeatureServer/0',
     style:{ color:'#15803d', weight:1, opacity:.85, fillColor:'#22c55e', fillOpacity:.22 } },
-  { name:'Earthquake Fault Lines (CGS)',  type:'feature',
+  { name:'Earthquake Fault Lines (CGS)',  type:'feature', on:true,
     url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Alquist_Priolo_Fault_Traces/FeatureServer/0',
     style:{ color:'#c41e3a', weight:3, opacity:.9 } },
-  { name:'Fire Hazard Severity (CAL FIRE)', type:'dynamic',
+  { name:'Fire Hazard Severity (CAL FIRE)', type:'dynamic', on:true,
     url:'https://services.gis.ca.gov/arcgis/rest/services/Environment/Fire_Severity_Zones/MapServer', opacity:.5 },
 ];
 
 function buildMainMap(st){
   if(map){ try{ map.remove(); }catch(e){} map=null; }
-  map = L.map('map', { scrollWheelZoom:true }).setView([st.lat, st.lon], 14);
+  map = L.map('map', { scrollWheelZoom:true }).setView([st.lat, st.lon], 13);
   const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'\u00a9 OpenStreetMap'});
   const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'\u00a9 Esri'});
   streets.addTo(map);
