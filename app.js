@@ -5,6 +5,10 @@
 const RC = {no:'#5b7c99', low:'#2e8b57', mod:'#e08a00', high:'#c41e3a', pending:'#8593a6'};
 const ESRI = {street:'World_Street_Map', topo:'World_Topo_Map', imagery:'World_Imagery', gray:'Canvas/World_Light_Gray_Base'};
 const $ = s => document.querySelector(s);
+const withTimeout = (promise, ms, label='Request') => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms))
+]);
 
 let STATE = null; // {addr, lat, lon, zip, city, display}
 let map, marker;
@@ -982,10 +986,14 @@ async function analyze(){
   // live lookups in parallel (hazards + livability)
   const safe = (p, label) => p.catch(e => { console.warn(`${label} lookup failed`, e); return null; });
   const [census, flood, liq, lands, fault, fhsz, amen, env] = await Promise.all([
-    safe(censusByZip(st.zip), 'Census'), safe(femaFloodZone(st.lat, st.lon), 'FEMA flood'),
-    safe(cgsLiquefaction(st.lat, st.lon), 'CGS liquefaction'), safe(cgsLandslide(st.lat, st.lon), 'CGS landslide'),
-    safe(cgsFault(st.lat, st.lon), 'CGS fault'), safe(calfireFHSZ(st.lat, st.lon), 'CAL FIRE'),
-    safe(overpassAmenities(st.lat, st.lon), 'OpenStreetMap amenities'), safe(localEnvironment(st.lat, st.lon), 'Environment')
+    safe(withTimeout(censusByZip(st.zip), 9000, 'Census'), 'Census'),
+    safe(withTimeout(femaFloodZone(st.lat, st.lon), 9000, 'FEMA flood'), 'FEMA flood'),
+    safe(withTimeout(cgsLiquefaction(st.lat, st.lon), 9000, 'CGS liquefaction'), 'CGS liquefaction'),
+    safe(withTimeout(cgsLandslide(st.lat, st.lon), 9000, 'CGS landslide'), 'CGS landslide'),
+    safe(withTimeout(cgsFault(st.lat, st.lon), 9000, 'CGS fault'), 'CGS fault'),
+    safe(withTimeout(calfireFHSZ(st.lat, st.lon), 9000, 'CAL FIRE'), 'CAL FIRE'),
+    safe(withTimeout(overpassAmenities(st.lat, st.lon), 7000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
+    safe(withTimeout(localEnvironment(st.lat, st.lon), 6500, 'Environment'), 'Environment')
   ]);
   renderProfile(census, st);
   if(flood){ liveResults[8]=flood; }
