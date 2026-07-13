@@ -236,18 +236,6 @@ function emptyAmenityCounts(){
 function amenityTotal(c){
   return c ? ['eat','shop','park','health','transit','station','community','constr'].reduce((sum,k)=>sum+(+c[k]||0),0) : 0;
 }
-function cachedAmenityCounts(st){
-  const bishopRanch = {uni:0,eat:70,shop:67,park:47,health:12,hosp:0,transit:23,station:0,junction:0,constr:0,community:9,_cached:true,_fallback:false};
-  const zip = String(st && st.zip || '');
-  const text = `${(st && st.display) || ''} ${(st && st.city) || ''}`.toLowerCase();
-  const lat = +(st && st.lat), lon = +(st && st.lon);
-  const nearBishopRanch = Number.isFinite(lat) && Number.isFinite(lon)
-    && Math.abs(lat - 37.77070) < 0.08 && Math.abs(lon - (-121.97113)) < 0.08;
-  if(zip.startsWith('94583') || text.includes('bishop ranch') || text.includes('san ramon') || nearBishopRanch){
-    return {...emptyAmenityCounts(), ...bishopRanch};
-  }
-  return null;
-}
 async function overpassAmenitiesDirect(lat,lon){
   const q=`[out:json][timeout:25];(
     nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];
@@ -300,7 +288,7 @@ async function overpassAmenities(st){
   const lat = st.lat, lon = st.lon;
   const live = await overpassAmenitiesDirect(lat,lon) || await overpassAmenitiesBackend(lat,lon);
   if(amenityTotal(live) > 0) return live;
-  return cachedAmenityCounts(st) || live || emptyAmenityCounts();
+  return live || emptyAmenityCounts();
 }
 
 async function localEnvironment(lat, lon){
@@ -771,7 +759,7 @@ function renderInsights(st, R, census, amen, liveResults){
     <div><b>${amen.health}</b><span>Healthcare</span></div>
     <div><b>${amen.community}</b><span>Community places</span></div>
     <div><b>${amen.constr}</b><span>Construction</span></div>
-  </div>${amen._cached ? '<p class="snapnote">Using cached OpenStreetMap counts for this ZIP while the live count service is unavailable.</p>' : amen._fallback ? '<p class="snapnote">OpenStreetMap counts did not respond in time. Showing 0 until live counts load successfully.</p>' : ''}` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
+  </div>${amen._fallback ? '<p class="snapnote">Live OpenStreetMap counts are unavailable right now. These values are placeholders, not verified counts.</p>' : ''}` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
 }
 
 function aqiLabel(aqi){
@@ -995,7 +983,7 @@ async function analyze(){
   renderProfile(null, st);
   renderSummaryTable(st, liveResults);
   renderInsightLoading();
-  const instantAmen = cachedAmenityCounts(st) || emptyAmenityCounts();
+  const instantAmen = emptyAmenityCounts();
   renderInsights(st, null, null, instantAmen, liveResults);
 
   // live lookups in parallel (hazards + livability)
