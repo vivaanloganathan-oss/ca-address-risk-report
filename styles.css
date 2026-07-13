@@ -136,8 +136,8 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
 .sumtable .impcell .w{display:block;color:#475468;font-size:11px;line-height:1.4}
 .sumtable .rk{font-weight:800;white-space:nowrap}
 .rk-no{color:var(--no)}.rk-low{color:var(--low)}.rk-mod{color:var(--mod)}.rk-high{color:var(--high)}.rk-pending{color:#8a98ab}
-.rk a.rk-link{color:inherit;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor;cursor:pointer}
-.rk a.rk-link:hover{opacity:.7;border-bottom-style:solid}
+.rk .rk-link{appearance:none;background:transparent;border:0;border-bottom:1px dashed currentColor;color:inherit;cursor:pointer;font:inherit;font-weight:800;padding:0;text-decoration:none}
+.rk .rk-link:hover{opacity:.7;border-bottom-style:solid}
 
 /* ---------- MAP SHOTS ---------- */
 .mapshots{margin-top:30px}

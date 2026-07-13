@@ -307,9 +307,7 @@ function renderSummaryTable(st, liveResults){
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
     const mapUrl=fill(f.map, st);
-    const links = live
-      ? `<a class="rk-link rk-maplink" href="${mapUrl}" target="_blank" rel="noopener">Map ↗</a>`
-      : `<a class="rk-link" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>`;
+    const links = `<button class="rk-link detail-open" type="button" aria-label="Open details for ${f.name}">Open</button>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
@@ -479,7 +477,7 @@ function selectVisibleFactor(){
 function wireSummaryRows(){
   document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
     row.addEventListener('click',e=>{
-      if(e.target.closest('a,button')) return;
+      if(e.target.closest('.impact-link')) return;
       openFactorModal(+row.id.slice(7));
     });
     row.addEventListener('keydown',e=>{
@@ -668,18 +666,6 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
-  const top = strongest(R.overall.items);
-  const positives = goodFactors(liveResults, amen);
-  const summary = positives.length
-    ? `This address is strong for ${positives.join(', ')}, while the main watch items are ${top.map(x=>x.name).join(', ') || 'limited in the current live data'}.`
-    : `The main watch items for this address are ${top.map(x=>x.name).join(', ') || 'limited in the current live data'}.`;
-  $('#scoreSummary').innerHTML = `<p>${summary}</p>
-    <div class="insight-chips">
-      <span>${R.overall.band} overall</span>
-      <span>Health ${R.dims.health.band}</span>
-      <span>Property ${R.dims.property.band}</span>
-      <span>Insurance ${R.dims.insurance.band}</span>
-    </div>`;
   const retail = amen ? amen.eat + amen.shop : null;
   $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
     <div><b>${retail}</b><span>Dining / retail</span></div>
@@ -689,25 +675,6 @@ function renderInsights(st, R, census, amen, liveResults){
     <div><b>${amen.community}</b><span>Community places</span></div>
     <div><b>${amen.constr}</b><span>Construction</span></div>
   </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
-  const entry = {
-    addr: st.display.split(',').slice(0,2).join(','),
-    zip: st.zip || 'n/a',
-    overall: R.overall.band,
-    health: R.dims.health.band,
-    property: R.dims.property.band,
-    insurance: R.dims.insurance.band,
-    flood: liveResults[8] ? liveResults[8].label.replace(' Risk','') : 'Open map',
-    fire: liveResults[11] ? liveResults[11].label.replace(' Risk','') : 'Open map',
-    amenities: retail ?? 'n/a',
-    transit: amen ? amen.transit + amen.station : 'n/a'
-  };
-  COMPARE = [entry, ...COMPARE.filter(x=>x.addr!==entry.addr)].slice(0,3);
-  try{ localStorage.setItem('riskCompare', JSON.stringify(COMPARE)); }catch(e){}
-  $('#compareTray').innerHTML = COMPARE.map((x,i)=>`<div class="compare-card ${i===0?'current':''}">
-    <div class="compare-title">${x.addr}</div>
-    <div class="compare-meta">ZIP ${x.zip} · ${x.overall}</div>
-    <div class="compare-grid"><span>Insurance</span><b>${x.insurance}</b><span>Flood</span><b>${x.flood}</b><span>Fire</span><b>${x.fire}</b><span>Transit</span><b>${x.transit}</b></div>
-  </div>`).join('');
 }
 
 /* ---------- Coverage (ZIP-specific rollout) ---------- */
