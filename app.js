@@ -230,41 +230,43 @@ async function calfireFHSZ(lat,lon){
 
 /* ---------- Live livability lookups (OpenStreetMap Overpass) ---------- */
 async function overpassAmenities(lat,lon){
-  const q=`[out:json][timeout:18];
-    (nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];)->.uni; .uni out count;
-    (nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];)->.eat; .eat out count;
-    (nwr(around:1500,${lat},${lon})[shop];)->.shop; .shop out count;
-    (nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];)->.park; .park out count;
-    (nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];)->.health; .health out count;
-    (nwr(around:2000,${lat},${lon})[amenity=hospital];)->.hosp; .hosp out count;
-    (nwr(around:1200,${lat},${lon})[highway=bus_stop]; nwr(around:1200,${lat},${lon})[public_transport=platform];)->.transit; .transit out count;
-    (nwr(around:3000,${lat},${lon})[railway=station];)->.station; .station out count;
-    (nwr(around:4000,${lat},${lon})[highway=motorway_junction];)->.junction; .junction out count;
-    (nwr(around:1500,${lat},${lon})[landuse=construction]; nwr(around:1500,${lat},${lon})[building=construction];)->.constr; .constr out count;
-    (nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];)->.community; .community out count;`;
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
     'https://overpass.openstreetmap.ru/api/interpreter'
   ];
-  const parse = j => {
-    const keys = ['uni','eat','shop','park','health','hosp','transit','station','junction','constr','community'];
-    const c = Object.fromEntries(keys.map(k=>[k,0]));
-    (j.elements||[]).forEach((e,i)=>{
-      const key = keys[i];
-      if(key) c[key] = +(e.tags && e.tags.total) || 0;
-    });
-    return c;
+  const queries = {
+    uni:`nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];`,
+    eat:`nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];`,
+    shop:`nwr(around:1500,${lat},${lon})[shop];`,
+    park:`nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];`,
+    health:`nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];`,
+    hosp:`nwr(around:2000,${lat},${lon})[amenity=hospital];`,
+    transit:`nwr(around:1200,${lat},${lon})[highway=bus_stop];nwr(around:1200,${lat},${lon})[public_transport=platform];`,
+    station:`nwr(around:3000,${lat},${lon})[railway=station];`,
+    junction:`nwr(around:4000,${lat},${lon})[highway=motorway_junction];`,
+    constr:`nwr(around:1500,${lat},${lon})[landuse=construction];nwr(around:1500,${lat},${lon})[building=construction];`,
+    community:`nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];`
+  };
+  const countOne = async (endpoint, expr) => {
+    const q = `[out:json][timeout:10];(${expr});out count;`;
+    const res = await fetchWithAbort(endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`data=${encodeURIComponent(q)}`
+    }, 8000);
+    if(!res.ok) throw new Error(`Overpass ${res.status}`);
+    const j = await res.json();
+    return +(((j.elements||[])[0]||{}).tags||{}).total || 0;
   };
   for(const endpoint of endpoints){
     try{
-      const res=await fetchWithAbort(endpoint,{
-        method:'POST',
-        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-        body:`data=${encodeURIComponent(q)}`
-      }, 6500);
-      if(!res.ok) continue;
-      return parse(await res.json());
+      const results = await Promise.allSettled(Object.entries(queries).map(async ([k,expr])=>[k, await countOne(endpoint, expr)]));
+      const entries = results.filter(r=>r.status==='fulfilled').map(r=>r.value);
+      if(!entries.length) throw new Error('No Overpass counts returned');
+      const c = Object.fromEntries(Object.keys(queries).map(k=>[k,0]));
+      entries.forEach(([k,v])=>{ c[k]=v; });
+      return c;
     }catch(e){}
   }
   return null;
@@ -979,7 +981,7 @@ async function analyze(){
     safe(withTimeout(cgsLandslide(st.lat, st.lon), 9000, 'CGS landslide'), 'CGS landslide'),
     safe(withTimeout(cgsFault(st.lat, st.lon), 9000, 'CGS fault'), 'CGS fault'),
     safe(withTimeout(calfireFHSZ(st.lat, st.lon), 9000, 'CAL FIRE'), 'CAL FIRE'),
-    safe(withTimeout(overpassAmenities(st.lat, st.lon), 15000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
+    safe(withTimeout(overpassAmenities(st.lat, st.lon), 24000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
     safe(withTimeout(localEnvironment(st.lat, st.lon), 6500, 'Environment'), 'Environment')
   ]);
   renderProfile(census, st);
