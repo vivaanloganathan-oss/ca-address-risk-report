@@ -230,42 +230,40 @@ async function calfireFHSZ(lat,lon){
 
 /* ---------- Live livability lookups (OpenStreetMap Overpass) ---------- */
 async function overpassAmenities(lat,lon){
-  const endpoints = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.openstreetmap.ru/api/interpreter'
-  ];
-  const queries = {
-    retail:`nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];nwr(around:1500,${lat},${lon})[shop];`,
-    park:`nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];`,
-    walk:`nwr(around:1200,${lat},${lon})[highway=bus_stop];nwr(around:1200,${lat},${lon})[public_transport=platform];nwr(around:3000,${lat},${lon})[railway=station];`,
-    health:`nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];`,
-    community:`nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];`,
-    constr:`nwr(around:1500,${lat},${lon})[landuse=construction];nwr(around:1500,${lat},${lon})[building=construction];`
-  };
-  const countOne = async (endpoint, expr) => {
-    const q = `[out:json][timeout:10];(${expr});out count;`;
-    const res = await fetchWithAbort(endpoint,{
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:`data=${encodeURIComponent(q)}`
-    }, 8000);
-    if(!res.ok) throw new Error(`Overpass ${res.status}`);
-    const j = await res.json();
-    return +(((j.elements||[])[0]||{}).tags||{}).total || 0;
-  };
-  for(const endpoint of endpoints){
-    try{
-      const results = await Promise.allSettled(Object.entries(queries).map(async ([k,expr])=>[k, await countOne(endpoint, expr)]));
-      const entries = results.filter(r=>r.status==='fulfilled').map(r=>r.value);
-      if(!entries.length) throw new Error('No Overpass counts returned');
-      const c = Object.fromEntries(Object.keys(queries).map(k=>[k,0]));
-      entries.forEach(([k,v])=>{ c[k]=v; });
-      c.uni = 0; c.eat = c.retail; c.shop = 0; c.transit = c.walk; c.station = 0; c.hosp = 0; c.junction = 0;
-      return c;
-    }catch(e){}
-  }
-  return null;
+  const q=`[out:json][timeout:25];(
+    nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];
+    nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];
+    nwr(around:1500,${lat},${lon})[shop];
+    nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];
+    nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];
+    nwr(around:1200,${lat},${lon})[highway=bus_stop];
+    nwr(around:1200,${lat},${lon})[public_transport=platform];
+    nwr(around:3000,${lat},${lon})[railway=station];
+    nwr(around:4000,${lat},${lon})[highway=motorway_junction];
+    nwr(around:1500,${lat},${lon})[landuse=construction];
+    nwr(around:1500,${lat},${lon})[building=construction];
+    nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];
+  );out tags qt 600;`;
+  try{
+    const res=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q});
+    if(!res.ok) return null;
+    const j=await res.json();
+    const c={uni:0,eat:0,shop:0,park:0,health:0,hosp:0,transit:0,station:0,junction:0,constr:0,community:0};
+    (j.elements||[]).forEach(e=>{const t=e.tags||{};
+      if(/^(university|college)$/.test(t.amenity||'')) c.uni++;
+      else if(/^(restaurant|cafe|fast_food)$/.test(t.amenity||'')) c.eat++;
+      else if(t.shop) c.shop++;
+      else if(/^(park|playground|pitch|garden)$/.test(t.leisure||'')) c.park++;
+      else if((t.amenity||'')==='hospital'){c.hosp++;c.health++;}
+      else if(/^(clinic|doctors|pharmacy)$/.test(t.amenity||'')) c.health++;
+      else if(t.highway==='bus_stop'||t.public_transport==='platform') c.transit++;
+      else if(t.railway==='station') c.station++;
+      else if(t.highway==='motorway_junction') c.junction++;
+      else if(t.landuse==='construction'||t.building==='construction') c.constr++;
+      else if(/^(library|community_centre|place_of_worship)$/.test(t.amenity||'')) c.community++;
+    });
+    return c;
+  }catch(e){ return null; }
 }
 
 async function localEnvironment(lat, lon){
@@ -728,20 +726,14 @@ function goodFactors(liveResults, amen){
 }
 function renderInsights(st, R, census, amen, liveResults){
   const retail = amen ? amen.eat + amen.shop : null;
-  const items = [
-    [amen ? retail : 0, 'Dining / retail', 38],
-    [amen ? amen.park : 0, 'Parks', 39],
-    [amen ? amen.transit + amen.station : 0, 'Transit points', 40],
-    [amen ? amen.health : 0, 'Healthcare', 42],
-    [amen ? amen.community : 0, 'Community places', 44],
-    [amen ? amen.constr : 0, 'Construction', 45]
-  ];
-  $('#neighborhoodSnapshot').innerHTML = `<div class="snapgrid">
-    ${items.map(([v,k,n])=>`<button type="button" class="${amen?'':'muted'}" data-snap-factor="${n}" aria-label="Open ${k} details"><b>${v}</b><span>${k}</span></button>`).join('')}
-  </div>${amen ? '' : '<p class="snapnote">Counts load from OpenStreetMap. Showing 0 when the count service is unavailable.</p>'}`;
-  document.querySelectorAll('#neighborhoodSnapshot [data-snap-factor]').forEach(btn=>{
-    btn.addEventListener('click',()=>openFactorModal(+btn.dataset.snapFactor));
-  });
+  $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
+    <div><b>${retail}</b><span>Dining / retail</span></div>
+    <div><b>${amen.park}</b><span>Parks</span></div>
+    <div><b>${amen.transit + amen.station}</b><span>Transit points</span></div>
+    <div><b>${amen.health}</b><span>Healthcare</span></div>
+    <div><b>${amen.community}</b><span>Community places</span></div>
+    <div><b>${amen.constr}</b><span>Construction</span></div>
+  </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
 }
 
 function aqiLabel(aqi){
@@ -973,7 +965,7 @@ async function analyze(){
     safe(withTimeout(cgsLandslide(st.lat, st.lon), 9000, 'CGS landslide'), 'CGS landslide'),
     safe(withTimeout(cgsFault(st.lat, st.lon), 9000, 'CGS fault'), 'CGS fault'),
     safe(withTimeout(calfireFHSZ(st.lat, st.lon), 9000, 'CAL FIRE'), 'CAL FIRE'),
-    safe(withTimeout(overpassAmenities(st.lat, st.lon), 24000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
+    safe(withTimeout(overpassAmenities(st.lat, st.lon), 32000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
     safe(withTimeout(localEnvironment(st.lat, st.lon), 6500, 'Environment'), 'Environment')
   ]);
   renderProfile(census, st);

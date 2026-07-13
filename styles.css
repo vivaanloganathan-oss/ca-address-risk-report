@@ -72,10 +72,7 @@ h1,h2,h3{margin:0}
 .insight-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
 .insight-chips span{background:#f3f6fb;border:1px solid var(--line);border-radius:999px;color:#42526b;font-size:11px;font-weight:800;padding:5px 9px}
 .snapgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.snapgrid button{background:#f8fafd;border:1px solid var(--line);border-radius:10px;color:inherit;cursor:pointer;font:inherit;padding:9px;text-align:left;transition:background .12s,border-color .12s,transform .12s}
-.snapgrid button:hover{background:#eef5ff;border-color:#bcd1fb;transform:translateY(-1px)}
-.snapgrid button:focus-visible{outline:2px solid rgba(47,109,246,.35);outline-offset:2px}
-.snapgrid button.muted{background:#fafbfe;color:#8a98ab}
+.snapgrid div{background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:9px}
 .snapgrid b{display:block;font-size:18px;line-height:1.1}
 .snapgrid span{display:block;color:var(--muted);font-size:10.5px;font-weight:700;margin-top:4px}
 .snapnote{margin-top:10px!important;font-size:11.5px!important;color:var(--muted)!important}
