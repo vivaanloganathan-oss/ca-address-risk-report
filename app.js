@@ -642,7 +642,7 @@ function computeRisk(liveResults){
     for(const k of ['health','property','insurance']){
       const v = LVLNUM[im[k].level];
       if(v===null || v===undefined) continue;
-      dims[k].items.push({ n:f.n, name:f.name, cat:f.cat, level:im[k].level, why:im[k].why, v,
+      dims[k].items.push({ n:f.n, name:f.name, cat:f.cat || 'Other', level:im[k].level, why:im[k].why, v,
                            live: !!liveResults[f.n] });
     }
   });
@@ -1015,7 +1015,7 @@ async function analyze(){
   $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather/Air: Open-Meteo · Basemaps © Esri. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
-  STATE._dims=d; STATE._census=census; STATE._amen=amen;
+  STATE._dims=d; STATE._census=census; STATE._amen=amen; STATE._env=env; STATE._risk=R;
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
   }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
@@ -1045,10 +1045,12 @@ async function makePDF(){
   const { jsPDF } = window.jspdf;
   const doc=new jsPDF({unit:'pt', format:'letter', compress:true}); // 612 x 792
   const W=612, H=792, M=40, CW=W-2*M;
-  const live=STATE._live||{}, d=STATE._dims||{}, c=STATE._census;
+  const live=STATE._live||{}, d=STATE._dims||{}, c=STATE._census, amen=STATE._amen, env=STATE._env;
+  const reportRisk = STATE._risk || computeRisk(live);
+  const build = (window.APP_CONFIG||{}).BUILD || '?';
 
   const imgs={};
-  await loadImgWithTimeout(thumbUrl(STATE.lat,STATE.lon,'street',680,300), 7000)
+  await loadImgWithTimeout(thumbUrl(STATE.lat,STATE.lon,'topo',680,300), 7000)
     .then(i=>imgs.cover=i)
     .catch(()=>{});
 
@@ -1060,7 +1062,7 @@ async function makePDF(){
   doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(220,228,240);
   doc.text(doc.splitTextToSize(STATE.display, CW), M, 94);
   doc.setFontSize(10); doc.setTextColor(157,180,214);
-  doc.text(`ZIP ${STATE.zip||'n/a'}   ·   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   ·   ${new Date().toLocaleDateString()}   ·   ${FACTORS.length} factors`, M, 150);
+  doc.text(`ZIP ${STATE.zip||'n/a'}   ·   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   ·   ${new Date().toLocaleDateString()}   ·   ${FACTORS.length} factors   ·   ${build}`, M, 150);
   let y=190;
   // dimension cards
   const dims=[['HEALTH RISK',d.health||'n/a'],['PROPERTY VALUE RISK',d.prop||'n/a'],['INSURANCE COST',d.ins||'n/a']];
@@ -1082,7 +1084,48 @@ async function makePDF(){
     }catch(e){}
   }
   doc.setFontSize(8); doc.setTextColor(133,147,166);
-  doc.text('Overall dimensions are indicative; per-factor detail and live lookups follow.', M, y+4);
+  doc.text('Map snapshot uses the current Esri topographic basemap. Live map layers include FEMA flood, CGS seismic hazards, and CAL FIRE fire severity when available.', M, y+4);
+
+  /* ---- Latest interactive snapshot ---- */
+  doc.addPage(); y=M+6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
+  doc.text('Latest Interactive Summary', M, y); y+=8;
+  doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=18;
+  const para=(txt,x,yy,w,size=9.5)=>{ doc.setFont('helvetica','normal'); doc.setFontSize(size); doc.setTextColor(43,57,77); const lines=doc.splitTextToSize(txt,w); doc.text(lines,x,yy); return yy + lines.length*(size+2); };
+  const box=(x,yy,w,h,title)=>{
+    doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,yy,w,h,7,7,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(90,107,128); doc.text(title.toUpperCase(), x+12, yy+18);
+  };
+  const topItems = [...(reportRisk.overall.items||[])].sort((a,b)=>b.v-a.v || (b.live?1:0)-(a.live?1:0));
+  const topHigh = topItems.filter(x=>x.level==='High').slice(0,3);
+  const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
+  const topLine = arr => arr.length ? arr.map(x=>`#${x.n} ${x.name}`).join('; ') : 'None identified.';
+  box(M,y,CW,86,'Top risks in this area');
+  para(`Overall: ${reportRisk.overall.band} risk (${reportRisk.overall.score.toFixed(1)}/10). Top high-risk factors: ${topLine(topHigh)} Top moderate-risk factors: ${topLine(topMod)}`, M+12, y+38, CW-24, 9.5);
+  y+=100;
+  const half=(CW-12)/2;
+  box(M,y,half,104,'Neighborhood snapshot');
+  const retail = amen ? amen.eat + amen.shop : 'n/a';
+  const snapText = amen
+    ? `Dining / retail: ${retail}. Parks: ${amen.park}. Transit points: ${amen.transit + amen.station}. Healthcare: ${amen.health}. Community places: ${amen.community}. Construction: ${amen.constr}.`
+    : 'Neighborhood amenities were unavailable from OpenStreetMap for this run.';
+  para(snapText, M+12, y+38, half-24, 9.5);
+  box(M+half+12,y,half,104,'Air + weather');
+  const w = (env && env.weather && env.weather.current) || {};
+  const a = (env && env.air && env.air.current) || {};
+  const aqi = a.us_aqi == null ? null : Math.round(+a.us_aqi);
+  const aq = aqiLabel(aqi);
+  const temp = w.temperature_2m == null ? 'n/a' : `${Math.round(+w.temperature_2m)} F`;
+  const wind = w.wind_speed_10m == null ? 'n/a' : `${Math.round(+w.wind_speed_10m)} mph ${windDirection(w.wind_direction_10m)}`;
+  const humid = w.relative_humidity_2m == null ? 'n/a' : `${Math.round(+w.relative_humidity_2m)}%`;
+  const envText = env ? `US AQI: ${aqi ?? 'n/a'} (${aq.label}). Temperature: ${temp}. Wind: ${wind}. Humidity: ${humid}. ${aq.note}` : 'Air quality and weather were unavailable for this run.';
+  para(envText, M+half+24, y+38, half-24, 9.5);
+  y+=124;
+  box(M,y,CW,74,'Active map layers');
+  para('Esri Topographic basemap; FEMA Flood Zones; Liquefaction Zones (CGS); Landslide Zones (CGS); Earthquake Fault Lines (CGS); Fire Hazard Severity (CAL FIRE).', M+12, y+38, CW-24, 9.5);
+  y+=92;
+  box(M,y,CW,88,'How to read this');
+  para('Each factor is scored 0-10 and grouped as 0 = No, 1-4 = Low, 5-7 = Moderate, 8-10 = High. Ratings use live public-agency data where an API exists; other factors show typical impact and an agency map link recentered on the address.', M+12, y+38, CW-24, 9.5);
 
   /* ---- Factor cards ---- */
   doc.addPage(); y=M+6;
@@ -1104,6 +1147,7 @@ async function makePDF(){
     doc.setTextColor(...c[2]); doc.text(t,x+6,yy+10); return w+6;
   };
   FACTORS.forEach(f=>{
+    const cat = f.cat || 'Other';
     const lv=live[f.n]; const rk=riskKey(lv&&lv.label); const col=PDFRC[rk];
     const detail=(lv&&lv.desc)?lv.desc:f.detail;
     doc.setFontSize(9.5); const dl=doc.splitTextToSize(detail, CW-24);
@@ -1114,7 +1158,7 @@ async function makePDF(){
     doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,4,cardH-2,'F'); // left stripe
     let yy=y+16;
     doc.setTextColor(133,147,166); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
-    doc.text(f.cat.toUpperCase(), M+14, yy);
+    doc.text(cat.toUpperCase(), M+14, yy);
     doc.setTextColor(20,28,46); doc.setFontSize(11.5); doc.text(`#${f.n}  ${f.name}`, M+14, yy+14);
     // badge
     const blabel = lv ? `${lv.label}${lv.score!=null?' · '+lv.score+'/10':''}` : 'Open map to assess';
