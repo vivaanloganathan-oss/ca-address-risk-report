@@ -309,9 +309,9 @@ tr.flash{animation:rowflash 1.6s ease-out}
 
 /* ---------- At-a-glance controls ---------- */
 .glance-panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:12px;margin:12px 0 14px}
-.glance-primer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:stretch}
-.glance-panel .note.scoring{display:flex;align-items:center;min-height:54px;background:#fffaf0;border-color:#f0e2bd;line-height:1.45}
-.legend-wrap{min-width:240px;background:#f8fafd;border:1px solid var(--line);border-radius:12px;padding:10px 11px}
+.glance-primer{display:grid;grid-template-columns:minmax(520px,1fr) minmax(320px,520px);gap:12px;align-items:stretch}
+.glance-panel .note.scoring{min-height:54px;background:#fffaf0;border-color:#f0e2bd;line-height:1.45}
+.legend-wrap{background:#f8fafd;border:1px solid var(--line);border-radius:12px;padding:10px 11px}
 .mini-label{display:block;margin:0 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:800}
 .legend-wrap .legend{gap:6px}
 .legend-wrap .pill{font-size:10.5px;padding:4px 8px}
