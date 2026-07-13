@@ -708,13 +708,6 @@ function renderInsights(st, R, census, amen, liveResults){
     <div class="compare-meta">ZIP ${x.zip} · ${x.overall}</div>
     <div class="compare-grid"><span>Insurance</span><b>${x.insurance}</b><span>Flood</span><b>${x.flood}</b><span>Fire</span><b>${x.fire}</b><span>Transit</span><b>${x.transit}</b></div>
   </div>`).join('');
-  const yr=(window.APP_CONFIG||{}).ACS_YEAR||'2023';
-  $('#historySignals').innerHTML = `<div class="timeline-list">
-    <div><b>FEMA flood</b><span>Live point lookup for the current map service.</span></div>
-    <div><b>Fire severity</b><span>Live CAL FIRE service snapshot; historical trend not inferred.</span></div>
-    <div><b>Home value context</b><span>Census ACS ${yr}${census&&census.home?` · median home ${census.home}`:''}.</span></div>
-    <div><b>Construction</b><span>${amen ? amen.constr+' mapped construction feature(s) nearby right now.' : 'Live OSM construction count unavailable.'}</span></div>
-  </div>`;
 }
 
 /* ---------- Coverage (ZIP-specific rollout) ---------- */
