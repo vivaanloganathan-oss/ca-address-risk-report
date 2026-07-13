@@ -297,7 +297,7 @@ function renderSummaryTable(st, liveResults){
     const im=effImpact(f,live);
     const mapUrl=fill(f.map, st);
     const risk = live
-      ? `${live.label.replace(' Risk','')} · ${live.score}/10`
+      ? `${live.label.replace(' Risk','')} · ${live.score}/10<br><a class="rk-link rk-maplink" href="${mapUrl}" target="_blank" rel="noopener">Map ↗</a>`
       : `<a class="rk-link" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
