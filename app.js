@@ -44,13 +44,11 @@ function typedHouseNumber(q){
 function titleCase(s){
   return String(s || '').toLowerCase().replace(/\b[a-z]/g, c=>c.toUpperCase());
 }
-function requireTypedHouseNumber(q, found){
+function hasTypedHouseNumber(q, found){
   const typed = typedHouseNumber(q);
-  if(!typed) return;
+  if(!typed) return true;
   const got = String(found || '').trim().match(/^(\d+[A-Za-z]?)/);
-  if(!got || got[1].toLowerCase() !== typed){
-    throw new Error(`Exact house-number match not found for "${q}". Please include street, city, and ZIP if available.`);
-  }
+  return !!got && got[1].toLowerCase() === typed;
 }
 async function censusGeocode(q){
   const query = tidyAddressQuery(q);
@@ -61,7 +59,6 @@ async function censusGeocode(q){
   const j = await res.json();
   const match = ((j.result||{}).addressMatches||[])[0];
   if(!match) throw new Error('Address not found. Try a fuller street address with ZIP.');
-  requireTypedHouseNumber(q, match.matchedAddress);
   const c = match.addressComponents || {};
   if((c.state || '').toUpperCase() !== 'CA') throw new Error(`That address resolves to ${c.state||'outside California'}. This tool is California-only.`);
   const city = titleCase(c.city);
@@ -86,13 +83,11 @@ async function nominatimGeocode(q){
   if(!data || !data.length) throw new Error('Address not found. Try a fuller street address.');
   const typed = typedHouseNumber(q);
   const r = typed
-    ? data.find(x=>((x.address||{}).house_number || '').toLowerCase() === typed)
+    ? (data.find(x=>hasTypedHouseNumber(q, [(x.address||{}).house_number, (x.address||{}).road].filter(Boolean).join(' '))) || data[0])
     : data[0];
-  if(!r) throw new Error(`Exact house-number match not found for "${q}". Please include street, city, and ZIP if available.`);
   const a = r.address||{};
   const state = a.state || '';
   if(state !== 'California') throw new Error(`That address resolves to ${state||'outside California'}. This tool is California-only.`);
-  requireTypedHouseNumber(q, [a.house_number, a.road].filter(Boolean).join(' '));
   return {
     lat:+r.lat, lon:+r.lon,
     zip:a.postcode || '',
@@ -107,20 +102,19 @@ async function photonGeocode(q){
   const j = await r.json();
   const typed = typedHouseNumber(q);
   const f = typed
-    ? (j.features||[]).find(x=>String((x.properties||{}).housenumber || '').toLowerCase() === typed)
+    ? ((j.features||[]).find(x=>hasTypedHouseNumber(q, [(x.properties||{}).housenumber, (x.properties||{}).street].filter(Boolean).join(' '))) || (j.features||[])[0])
     : (j.features||[])[0];
   if(!f) throw new Error('Address not found. Try a fuller street address.');
   const p=f.properties||{};
   if(p.state!=='California') throw new Error(`That address resolves to ${p.state||'outside California'}. This tool is California-only.`);
   const line1=[p.housenumber,p.street].filter(Boolean).join(' ')||p.name||'';
-  requireTypedHouseNumber(q, line1);
   return { lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0],
     zip:p.postcode||'', city:p.city||p.town||p.village||p.county||'', county:p.county||'',
     display:[line1, p.city||p.town||p.village, 'California', p.postcode].filter(Boolean).join(', ') };
 }
 
-/* Census first for exact U.S. house-number matches, then OSM-based fallbacks.
-   If the user typed a house number, fallbacks must keep that same number. */
+/* Census first for U.S. addresses, then OSM-based fallbacks.
+   House-number matches are preferred, but street/place/city inputs still work. */
 async function geocode(q){
   try{ return await censusGeocode(q); }
   catch(e){
@@ -128,9 +122,6 @@ async function geocode(q){
     catch(e2){
       try{ return await photonGeocode(q); }
       catch(e3){
-        const msgs = [e3.message, e2.message, e.message].filter(Boolean);
-        const exact = msgs.find(m=>m.includes('Exact house-number match'));
-        if(exact) throw new Error(exact);
         throw (e3.message && e3.message.includes('California-only')) ? e3 : e;
       }
     }

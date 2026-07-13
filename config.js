@@ -1,6 +1,6 @@
 /* Optional configuration. Safe to leave blank — the app works without it. */
 window.APP_CONFIG = {
-  BUILD: 'b27-exact-address-2026-07-13',
+  BUILD: 'b28-flexible-address-2026-07-13',
   // Free U.S. Census API key (instant signup: https://api.census.gov/data/key_signup.html).
   // When set, the ZIP demographics panel & factor #1 auto-populate. Leave '' to skip.
   CENSUS_KEY: '17131a6e464af27065bf5f42fbbb0d1c3b3872a4',
