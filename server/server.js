@@ -195,27 +195,28 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v14-amenity-count-cache'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v15-amenity-974fb3b-cache'; // bump when editing; check at GET /
 
 function emptyAmenityCounts() {
   return { uni: 0, eat: 0, shop: 0, park: 0, health: 0, hosp: 0, transit: 0, station: 0, junction: 0, constr: 0, community: 0 };
 }
 
-const AMENITY_COUNT_KEYS = ['uni', 'eat', 'shop', 'park', 'health', 'hosp', 'transit', 'station', 'junction', 'constr', 'community'];
-
-function amenityCountQuery(lat, lon) {
+function amenityQuery(lat, lon) {
   return `[out:json][timeout:25];
-nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];out count;
-nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];out count;
-nwr(around:1500,${lat},${lon})[shop];out count;
-nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];out count;
-nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];out count;
-nwr(around:2000,${lat},${lon})[amenity="hospital"];out count;
-(nwr(around:1200,${lat},${lon})[highway=bus_stop];nwr(around:1200,${lat},${lon})[public_transport=platform];);out count;
-nwr(around:3000,${lat},${lon})[railway=station];out count;
-nwr(around:4000,${lat},${lon})[highway=motorway_junction];out count;
-(nwr(around:1500,${lat},${lon})[landuse=construction];nwr(around:1500,${lat},${lon})[building=construction];);out count;
-nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];out count;`;
+(
+  nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];
+  nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];
+  nwr(around:1500,${lat},${lon})[shop];
+  nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];
+  nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];
+  nwr(around:1200,${lat},${lon})[highway=bus_stop];
+  nwr(around:1200,${lat},${lon})[public_transport=platform];
+  nwr(around:3000,${lat},${lon})[railway=station];
+  nwr(around:4000,${lat},${lon})[highway=motorway_junction];
+  nwr(around:1500,${lat},${lon})[landuse=construction];
+  nwr(around:1500,${lat},${lon})[building=construction];
+  nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];
+);out tags qt 600;`;
 }
 
 function amenityCacheFile(lat, lon) {
@@ -224,16 +225,21 @@ function amenityCacheFile(lat, lon) {
   return path.join(CACHE_DIR, `amenities_${hash}.json`);
 }
 
-function parseOverpassCountElement(element) {
-  const tags = element?.tags || {};
-  return Number(tags.total || 0) || 0;
-}
-
-function parseAmenityCounts(json) {
+function countAmenityElements(elements = []) {
   const counts = emptyAmenityCounts();
-  const elements = json?.elements || [];
-  AMENITY_COUNT_KEYS.forEach((key, index) => {
-    counts[key] = parseOverpassCountElement(elements[index]);
+  elements.forEach(e => {
+    const t = e.tags || {};
+    if (/^(university|college)$/.test(t.amenity || '')) counts.uni++;
+    else if (/^(restaurant|cafe|fast_food)$/.test(t.amenity || '')) counts.eat++;
+    else if (t.shop) counts.shop++;
+    else if (/^(park|playground|pitch|garden)$/.test(t.leisure || '')) counts.park++;
+    else if ((t.amenity || '') === 'hospital') { counts.hosp++; counts.health++; }
+    else if (/^(clinic|doctors|pharmacy)$/.test(t.amenity || '')) counts.health++;
+    else if (t.highway === 'bus_stop' || t.public_transport === 'platform') counts.transit++;
+    else if (t.railway === 'station') counts.station++;
+    else if (t.highway === 'motorway_junction') counts.junction++;
+    else if (t.landuse === 'construction' || t.building === 'construction') counts.constr++;
+    else if (/^(library|community_centre|place_of_worship)$/.test(t.amenity || '')) counts.community++;
   });
   return counts;
 }
@@ -242,7 +248,7 @@ async function fetchOverpassAmenityCounts(endpoint, lat, lon) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 22000);
   try {
-    const body = new URLSearchParams({ data: amenityCountQuery(lat, lon) });
+    const body = new URLSearchParams({ data: amenityQuery(lat, lon) });
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -253,7 +259,8 @@ async function fetchOverpassAmenityCounts(endpoint, lat, lon) {
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`${res.status}`);
-    return parseAmenityCounts(await res.json());
+    const json = await res.json();
+    return countAmenityElements(json?.elements || []);
   } finally {
     clearTimeout(timer);
   }
@@ -310,7 +317,7 @@ app.get('/api/amenities', async (req, res) => {
   }
   try {
     const result = await amenityCounts(lat.toFixed(6), lon.toFixed(6));
-    res.json({ counts: result.counts, cached: result.cached, source: 'OpenStreetMap Overpass count', server: SERVER_VERSION });
+    res.json({ counts: result.counts, cached: result.cached, source: 'OpenStreetMap Overpass', server: SERVER_VERSION });
   } catch (e) {
     res.status(502).json({ error: 'amenity_counts_failed', detail: String(e.message || e) });
   }
