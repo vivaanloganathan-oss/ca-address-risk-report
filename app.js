@@ -750,8 +750,22 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
-  if(!amen) amen = emptyAmenityCounts();
-  const retail = amen ? amen.eat + amen.shop : null;
+  const hasCounts = amenityTotal(amen) > 0 && !(amen && amen._fallback);
+  if(!hasCounts){
+    const q = encodeURIComponent(`amenities near ${st.display || `${st.lat},${st.lon}`}`);
+    $('#neighborhoodSnapshot').innerHTML = `<div class="snap-unavailable">
+      <b>Live amenity counts unavailable</b>
+      <p>OpenStreetMap did not return verified neighborhood counts for this run. No placeholder counts are shown.</p>
+      <div class="snap-actions">
+        <button type="button" id="snapRetry">Retry counts</button>
+        <a href="https://www.openstreetmap.org/search?query=${q}" target="_blank" rel="noopener">Open OSM</a>
+      </div>
+    </div>`;
+    const retry = document.getElementById('snapRetry');
+    if(retry && STATE) retry.addEventListener('click', analyze);
+    return;
+  }
+  const retail = amen.eat + amen.shop;
   $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
     <div><b>${retail}</b><span>Dining / retail</span></div>
     <div><b>${amen.park}</b><span>Parks</span></div>
@@ -759,7 +773,7 @@ function renderInsights(st, R, census, amen, liveResults){
     <div><b>${amen.health}</b><span>Healthcare</span></div>
     <div><b>${amen.community}</b><span>Community places</span></div>
     <div><b>${amen.constr}</b><span>Construction</span></div>
-  </div>${amen._fallback ? '<p class="snapnote">Live OpenStreetMap counts are unavailable right now. These values are placeholders, not verified counts.</p>' : ''}` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
+  </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
 }
 
 function aqiLabel(aqi){
