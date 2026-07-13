@@ -995,11 +995,53 @@ function loadImg(src){
   return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous';
     i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=src; });
 }
-function loadImgWithTimeout(src, ms=7000){
-  return Promise.race([
-    loadImg(src),
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), ms))
-  ]);
+function osmTileUrl(z, x, y){
+  const host = ['a','b','c'][Math.abs(x + y) % 3];
+  return `https://${host}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+}
+function lonToTileX(lon, zoom){
+  return ((+lon + 180) / 360) * Math.pow(2, zoom);
+}
+function latToTileY(lat, zoom){
+  const rad = (+lat) * Math.PI / 180;
+  return (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * Math.pow(2, zoom);
+}
+async function buildOsmMapDataUrl(lat, lon, w=900, h=430, zoom=13){
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#eef5ff';
+  ctx.fillRect(0,0,w,h);
+  const size = 256, tiles = Math.pow(2, zoom);
+  const centerX = lonToTileX(lon, zoom) * size;
+  const centerY = latToTileY(lat, zoom) * size;
+  const startX = centerX - w / 2;
+  const startY = centerY - h / 2;
+  const minX = Math.floor(startX / size);
+  const maxX = Math.floor((startX + w) / size);
+  const minY = Math.floor(startY / size);
+  const maxY = Math.floor((startY + h) / size);
+  const jobs = [];
+  for(let x=minX; x<=maxX; x++){
+    for(let y=minY; y<=maxY; y++){
+      if(y < 0 || y >= tiles) continue;
+      const wrappedX = ((x % tiles) + tiles) % tiles;
+      const dx = Math.round(x * size - startX);
+      const dy = Math.round(y * size - startY);
+      jobs.push(loadImg(osmTileUrl(zoom, wrappedX, y)).then(img=>ctx.drawImage(img, dx, dy, size, size)).catch(()=>{}));
+    }
+  }
+  await Promise.all(jobs);
+  ctx.fillStyle = 'rgba(196,30,58,.95)';
+  ctx.beginPath(); ctx.arc(w/2, h/2, 12, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(w/2, h/2, 6, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(20,28,46,.78)';
+  ctx.fillRect(0, h-28, w, 28);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '16px Helvetica, Arial, sans-serif';
+  ctx.fillText('OpenStreetMap preview - centered on address', 14, h-10);
+  return canvas.toDataURL('image/png');
 }
 async function makePDF(){
   if(!STATE) return;
@@ -1009,41 +1051,63 @@ async function makePDF(){
   const { jsPDF } = window.jspdf;
   const doc=new jsPDF({unit:'pt', format:'letter', compress:true}); // 612 x 792
   const W=612, H=792, M=40, CW=W-2*M;
-  const live=STATE._live||{}, d=STATE._dims||{}, c=STATE._census, amen=STATE._amen, env=STATE._env;
+  const live=STATE._live||{}, c=STATE._census, amen=STATE._amen, env=STATE._env;
   const reportRisk = STATE._risk || computeRisk(live);
-  const pdfBand = v => String(v || 'n/a').replace(/\s*·\s*[\d.]+\/10/g, '');
+  const imgs={};
+  await withTimeout(buildOsmMapDataUrl(STATE.lat, STATE.lon, 900, 430, 13), 12000, 'PDF map')
+    .then(url=>{ imgs.map=url; })
+    .catch(()=>{});
 
   /* ---- Cover ---- */
-  doc.setFillColor(20,28,46); doc.rect(0,0,W,168,'F');
-  doc.setTextColor(157,180,214); doc.setFontSize(9); doc.setFont('helvetica','bold');
-  doc.text('CALIFORNIA NEIGHBORHOOD INTELLIGENCE', M, 42);
-  doc.setTextColor(255,255,255); doc.setFontSize(23); doc.text('Address Risk & Livability Report', M, 70);
+  doc.setFillColor(18,29,48); doc.rect(0,0,W,174,'F');
+  doc.setFillColor(49,112,246); doc.rect(0,0,W,7,'F');
+  doc.setFillColor(46,139,87); doc.rect(0,7,W*.34,7,'F');
+  doc.setFillColor(224,138,0); doc.rect(W*.34,7,W*.33,7,'F');
+  doc.setFillColor(196,30,58); doc.rect(W*.67,7,W*.33,7,'F');
+  doc.setTextColor(159,184,218); doc.setFontSize(9); doc.setFont('helvetica','bold');
+  doc.text('CALIFORNIA NEIGHBORHOOD INTELLIGENCE', M, 44);
+  doc.setTextColor(255,255,255); doc.setFontSize(24); doc.text('Address Risk & Livability Report', M, 74);
   doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(220,228,240);
-  doc.text(doc.splitTextToSize(STATE.display, CW), M, 94);
+  doc.text(doc.splitTextToSize(STATE.display, CW), M, 100);
   doc.setFontSize(10); doc.setTextColor(157,180,214);
-  doc.text(`ZIP ${STATE.zip||'n/a'}   ·   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   ·   ${new Date().toLocaleDateString()}   ·   ${FACTORS.length} factors`, M, 150);
-  let y=190;
-  // dimension cards
-  const dims=[['HEALTH',pdfBand(d.health)],['PROPERTY VALUE',pdfBand(d.prop)],['INSURANCE',pdfBand(d.ins)]];
-  const bw=(CW-24)/3;
-  dims.forEach((dm,i)=>{ const x=M+i*(bw+12);
-    doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,y,bw,54,6,6,'FD');
-    doc.setTextColor(90,107,128); doc.setFontSize(7.5); doc.text(dm[0],x+10,y+17);
-    doc.setTextColor(26,36,51); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-    doc.text(doc.splitTextToSize(String(dm[1]),bw-20),x+10,y+34); doc.setFont('helvetica','normal');
-  });
-  y+=70;
-  if(c){ doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,30,6,6,'FD');
-    doc.setTextColor(60,72,90); doc.setFontSize(9.5);
-    doc.text(`Population (ZIP): ${c.pop}      Median income: ${c.income}      Median home: ${c.home}      Bachelor's+: ${c.bachelors}`, M+10, y+19); y+=42; }
-  doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,88,7,7,'FD');
+  doc.text(`ZIP ${STATE.zip||'n/a'}   -   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   -   ${new Date().toLocaleDateString()}   -   ${FACTORS.length} factors`, M, 154);
+  let y=202;
+  doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,74,8,8,'FD');
+  doc.setFillColor(239,246,255); doc.roundedRect(M+12,y+14,92,32,16,16,'F');
+  doc.setTextColor(49,112,246); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(`ZIP ${STATE.zip||'n/a'}`, M+30, y+35);
+  doc.setTextColor(20,28,46); doc.setFontSize(12);
+  doc.text('Location Snapshot', M+122, y+25);
+  doc.setFont('helvetica','normal'); doc.setTextColor(90,107,128); doc.setFontSize(9.5);
+  const meta = c
+    ? `Population ${c.pop}  -  Median income ${c.income}  -  Median home ${c.home}  -  Bachelor's+ ${c.bachelors}`
+    : `Coordinates ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}  -  Public agency and neighborhood data`;
+  doc.text(doc.splitTextToSize(meta, CW-148), M+122, y+45);
+  y+=92;
+  doc.setFillColor(255,255,255); doc.setDrawColor(220,227,236); doc.roundedRect(M,y,CW,304,9,9,'FD');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(90,107,128);
-  doc.text('OPENSTREETMAP LIVE MAP', M+14, y+20);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(43,57,77);
-  doc.text(doc.splitTextToSize(`Centered at ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)} with FEMA flood, CGS seismic, and CAL FIRE overlays available in the interactive report.`, CW-28), M+14, y+42);
-  y+=100;
-  doc.setFontSize(8); doc.setTextColor(133,147,166);
-  doc.text('Live map uses OpenStreetMap as the only basemap. Overlay layers include FEMA flood, CGS seismic hazards, and CAL FIRE fire severity when available.', M, y+4);
+  doc.text('ADDRESS MAP', M+14, y+20);
+  const mapX=M+14, mapY=y+34, mapW=CW-28, mapH=226;
+  if(imgs.map){
+    doc.addImage(imgs.map,'PNG',mapX,mapY,mapW,mapH);
+  }else{
+    doc.setFillColor(239,246,255); doc.rect(mapX,mapY,mapW,mapH,'F');
+    doc.setTextColor(49,112,246); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.text('Map preview unavailable', mapX+18, mapY+40);
+    doc.setTextColor(90,107,128); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text('Open the interactive report for the live OpenStreetMap view.', mapX+18, mapY+60);
+  }
+  doc.setDrawColor(49,112,246); doc.setLineWidth(1.5); doc.rect(mapX,mapY,mapW,mapH); doc.setLineWidth(1);
+  doc.setFillColor(196,30,58); doc.circle(mapX+mapW/2, mapY+mapH/2, 7, 'F');
+  doc.setDrawColor(255,255,255); doc.circle(mapX+mapW/2, mapY+mapH/2, 3, 'S');
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
+  doc.text('OpenStreetMap preview centered on this address. Live report includes FEMA flood, CGS seismic, and CAL FIRE layers.', M+14, y+282);
+  y+=320;
+  doc.setFillColor(239,246,255); doc.setDrawColor(208,224,255); doc.roundedRect(M,y,CW,46,8,8,'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(49,112,246);
+  doc.text('Report focus', M+14, y+18);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(43,57,77);
+  doc.text(doc.splitTextToSize('Use this PDF as a clean screening summary. Open the live page for expandable explanations, layer toggles, and agency map links.', CW-28), M+14, y+34);
 
   /* ---- Latest interactive snapshot ---- */
   doc.addPage(); y=M+6;
@@ -1060,7 +1124,7 @@ async function makePDF(){
   const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
   const topLine = arr => arr.length ? arr.map(x=>`#${x.n} ${x.name}`).join('; ') : 'None identified.';
   box(M,y,CW,86,'Top watch items');
-  para(`Overall band: ${reportRisk.overall.band}. Top high-risk factors: ${topLine(topHigh)} Top moderate-risk factors: ${topLine(topMod)}`, M+12, y+38, CW-24, 9.5);
+  para(`Primary watch factors: ${topLine(topHigh)} Secondary watch factors: ${topLine(topMod)}`, M+12, y+38, CW-24, 9.5);
   y+=100;
   const half=(CW-12)/2;
   box(M,y,half,104,'Neighborhood snapshot');
