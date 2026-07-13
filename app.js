@@ -434,7 +434,7 @@ function renderSummaryTable(st, liveResults){
     const im=effImpact(f,live);
     const mapUrl=fill(f.map, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
-    const links = `<span class="link-actions"><a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open</a>${detailBtn}</span>`;
+    const links = `<span class="link-actions"><a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
