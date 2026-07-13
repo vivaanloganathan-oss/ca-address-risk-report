@@ -729,18 +729,34 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
+  if(!amen){
+    $('#neighborhoodSnapshot').innerHTML = `<div class="snap-empty">
+      <b>OpenStreetMap amenities unavailable</b>
+      <p>Dining, parks, transit, healthcare, community places, and construction counts could not be loaded for this run. Other hazard layers and factor details are still available.</p>
+      <div class="snap-actions">
+        <button type="button" data-snap-factor="38">Dining</button>
+        <button type="button" data-snap-factor="39">Parks</button>
+        <button type="button" data-snap-factor="40">Transit</button>
+        <button type="button" data-snap-factor="42">Healthcare</button>
+      </div>
+    </div>`;
+    document.querySelectorAll('#neighborhoodSnapshot [data-snap-factor]').forEach(btn=>{
+      btn.addEventListener('click',()=>openFactorModal(+btn.dataset.snapFactor));
+    });
+    return;
+  }
   const retail = amen ? amen.eat + amen.shop : null;
   const items = [
-    [amen ? retail : 'n/a', 'Dining / retail', 38],
-    [amen ? amen.park : 'n/a', 'Parks', 39],
-    [amen ? amen.transit + amen.station : 'n/a', 'Transit points', 40],
-    [amen ? amen.health : 'n/a', 'Healthcare', 42],
-    [amen ? amen.community : 'n/a', 'Community places', 44],
-    [amen ? amen.constr : 'n/a', 'Construction', 45]
+    [retail, 'Dining / retail', 38],
+    [amen.park, 'Parks', 39],
+    [amen.transit + amen.station, 'Transit points', 40],
+    [amen.health, 'Healthcare', 42],
+    [amen.community, 'Community places', 44],
+    [amen.constr, 'Construction', 45]
   ];
   $('#neighborhoodSnapshot').innerHTML = `<div class="snapgrid">
-    ${items.map(([v,k,n])=>`<button type="button" class="${v==='n/a'?'muted':''}" data-snap-factor="${n}" aria-label="Open ${k} details"><b>${v}</b><span>${k}</span></button>`).join('')}
-  </div>${amen ? '' : '<p class="snapnote">Amenity counts are temporarily unavailable from OpenStreetMap. Other live layers still loaded.</p>'}`;
+    ${items.map(([v,k,n])=>`<button type="button" data-snap-factor="${n}" aria-label="Open ${k} details"><b>${v}</b><span>${k}</span></button>`).join('')}
+  </div>`;
   document.querySelectorAll('#neighborhoodSnapshot [data-snap-factor]').forEach(btn=>{
     btn.addEventListener('click',()=>openFactorModal(+btn.dataset.snapFactor));
   });
