@@ -1046,7 +1046,8 @@ async function makePDF(){
   const W=612, H=792, M=40, CW=W-2*M;
   const live=STATE._live||{}, d=STATE._dims||{}, c=STATE._census, amen=STATE._amen, env=STATE._env;
   const reportRisk = STATE._risk || computeRisk(live);
-  const build = (window.APP_CONFIG||{}).BUILD || '?';
+  const pdfBand = v => String(v || 'n/a').replace(/\s*·\s*[\d.]+\/10/g, '');
+  const riskLabel = label => (label || 'Open map to assess').replace(' Risk','');
 
   /* ---- Cover ---- */
   doc.setFillColor(20,28,46); doc.rect(0,0,W,168,'F');
@@ -1056,10 +1057,10 @@ async function makePDF(){
   doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(220,228,240);
   doc.text(doc.splitTextToSize(STATE.display, CW), M, 94);
   doc.setFontSize(10); doc.setTextColor(157,180,214);
-  doc.text(`ZIP ${STATE.zip||'n/a'}   ·   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   ·   ${new Date().toLocaleDateString()}   ·   ${FACTORS.length} factors   ·   ${build}`, M, 150);
+  doc.text(`ZIP ${STATE.zip||'n/a'}   ·   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   ·   ${new Date().toLocaleDateString()}   ·   ${FACTORS.length} factors`, M, 150);
   let y=190;
   // dimension cards
-  const dims=[['HEALTH RISK',d.health||'n/a'],['PROPERTY VALUE RISK',d.prop||'n/a'],['INSURANCE COST',d.ins||'n/a']];
+  const dims=[['HEALTH',pdfBand(d.health)],['PROPERTY VALUE',pdfBand(d.prop)],['INSURANCE',pdfBand(d.ins)]];
   const bw=(CW-24)/3;
   dims.forEach((dm,i)=>{ const x=M+i*(bw+12);
     doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,y,bw,54,6,6,'FD');
@@ -1083,7 +1084,7 @@ async function makePDF(){
   /* ---- Latest interactive snapshot ---- */
   doc.addPage(); y=M+6;
   doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
-  doc.text('Latest Interactive Summary', M, y); y+=8;
+  doc.text('Report Summary', M, y); y+=8;
   doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=18;
   const para=(txt,x,yy,w,size=9.5)=>{ doc.setFont('helvetica','normal'); doc.setFontSize(size); doc.setTextColor(43,57,77); const lines=doc.splitTextToSize(txt,w); doc.text(lines,x,yy); return yy + lines.length*(size+2); };
   const box=(x,yy,w,h,title)=>{
@@ -1094,8 +1095,8 @@ async function makePDF(){
   const topHigh = topItems.filter(x=>x.level==='High').slice(0,3);
   const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
   const topLine = arr => arr.length ? arr.map(x=>`#${x.n} ${x.name}`).join('; ') : 'None identified.';
-  box(M,y,CW,86,'Top risks in this area');
-  para(`Overall: ${reportRisk.overall.band} risk (${reportRisk.overall.score.toFixed(1)}/10). Top high-risk factors: ${topLine(topHigh)} Top moderate-risk factors: ${topLine(topMod)}`, M+12, y+38, CW-24, 9.5);
+  box(M,y,CW,86,'Top watch items');
+  para(`Overall band: ${reportRisk.overall.band}. Top high-risk factors: ${topLine(topHigh)} Top moderate-risk factors: ${topLine(topMod)}`, M+12, y+38, CW-24, 9.5);
   y+=100;
   const half=(CW-12)/2;
   box(M,y,half,104,'Neighborhood snapshot');
@@ -1119,7 +1120,7 @@ async function makePDF(){
   para('OpenStreetMap basemap; FEMA Flood Zones; Liquefaction Zones (CGS); Landslide Zones (CGS); Earthquake Fault Lines (CGS); Fire Hazard Severity (CAL FIRE).', M+12, y+38, CW-24, 9.5);
   y+=92;
   box(M,y,CW,88,'How to read this');
-  para('Each factor is scored 0-10 and grouped as 0 = No, 1-4 = Low, 5-7 = Moderate, 8-10 = High. Ratings use live public-agency data where an API exists; other factors show typical impact and an agency map link recentered on the address.', M+12, y+38, CW-24, 9.5);
+  para('Factors are grouped as No, Low, Moderate, or High based on live public-agency data where an API exists. Other factors show their typical impact and an agency map link recentered on the address.', M+12, y+38, CW-24, 9.5);
 
   /* ---- Factor cards ---- */
   doc.addPage(); y=M+6;
@@ -1155,7 +1156,7 @@ async function makePDF(){
     doc.text(cat.toUpperCase(), M+14, yy);
     doc.setTextColor(20,28,46); doc.setFontSize(11.5); doc.text(`#${f.n}  ${f.name}`, M+14, yy+14);
     // badge
-    const blabel = lv ? `${lv.label}${lv.score!=null?' · '+lv.score+'/10':''}` : 'Open map to assess';
+    const blabel = lv ? riskLabel(lv.label) : 'Open map to assess';
     doc.setFontSize(8.5); const bw2=doc.getTextWidth(blabel)+16;
     const bx=W-M-bw2-8;
     if(rk==='pending'){ doc.setFillColor(133,147,166);} else { doc.setFillColor(col[0],col[1],col[2]); }
