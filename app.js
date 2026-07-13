@@ -332,7 +332,6 @@ function renderSummaryTable(st, liveResults){
   buildGlanceControls();
   wireImpactLinks();
   wireSummaryRows();
-  selectVisibleFactor();
 }
 
 /* Impact-summary mapping embedded directly (fallback if explanations.js fails to load) */
@@ -398,10 +397,9 @@ function impactBlock(label, item){
   </div>`;
 }
 
-function renderFactorDetail(n){
+function openFactorModal(n){
   const item = SUMMARY_ITEMS[n] || SUMMARY_ITEMS[+n];
-  const panel = $('#factorDetail');
-  if(!item || !panel) return;
+  if(!item) return;
   SELECTED_FACTOR = +n;
   document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
     const on = row.id === `sumrow-${n}`;
@@ -414,10 +412,10 @@ function renderFactorDetail(n){
     ? `<button class="detail-explain-btn" type="button" data-target="detailExplain-${f.n}">Show explanation</button>
        <div class="detail-explain hidden" id="detailExplain-${f.n}" data-name="${f.name}" data-srcs="${imgs.join('|')}"></div>`
     : `<div class="detail-empty">No explanation images are available for this factor yet.</div>`;
-  panel.innerHTML = `<div class="detail-kicker">Selected factor</div>
+  $('#xmodalTitle').textContent = `#${f.n} ${f.name}`;
+  $('#xmodalBody').innerHTML = `<div class="detail-modal">
     <div class="detail-head">
       <div>
-        <h3>#${f.n} ${f.name}</h3>
         <div class="detail-cat">${f.cat}${live?' <span class="livechip">LIVE</span>':''}</div>
       </div>
       <span class="detail-risk rk-${rk}">${score}</span>
@@ -434,8 +432,12 @@ function renderFactorDetail(n){
     <div class="detail-section">
       <div class="detail-section-title">Explanation</div>
       ${explain}
-    </div>`;
-  const btn = panel.querySelector('.detail-explain-btn');
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
+  $('#xmodal').classList.remove('hidden');
+  const btn = $('#xmodalBody').querySelector('.detail-explain-btn');
   if(btn) btn.addEventListener('click',()=>{
     const target = document.getElementById(btn.dataset.target);
     if(!target) return;
@@ -450,27 +452,40 @@ function selectVisibleFactor(){
   const visible = [...document.querySelectorAll('#summaryTable tbody tr')].filter(r=>r.style.display !== 'none');
   if(!visible.length) return;
   const selected = SELECTED_FACTOR && visible.find(r=>r.id === `sumrow-${SELECTED_FACTOR}`);
-  renderFactorDetail(+(selected || visible[0]).id.slice(7));
+  document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
+    row.classList.toggle('selected', !!selected && row === selected);
+    row.setAttribute('aria-pressed', String(!!selected && row === selected));
+  });
 }
 
 function wireSummaryRows(){
   document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
     row.addEventListener('click',e=>{
       if(e.target.closest('a,button')) return;
-      renderFactorDetail(+row.id.slice(7));
+      openFactorModal(+row.id.slice(7));
     });
     row.addEventListener('keydown',e=>{
       if(e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
-      renderFactorDetail(+row.id.slice(7));
+      openFactorModal(+row.id.slice(7));
     });
+  });
+}
+
+function closeFactorModal(){
+  const modal = $('#xmodal');
+  if(modal) modal.classList.add('hidden');
+  SELECTED_FACTOR = null;
+  document.querySelectorAll('#summaryTable tbody tr.selected').forEach(row=>{
+    row.classList.remove('selected');
+    row.setAttribute('aria-pressed','false');
   });
 }
 (function(){
   document.addEventListener('click', e=>{
-    if(e.target && (e.target.id==='xmodalClose' || e.target.id==='xmodal')) $('#xmodal').classList.add('hidden');
+    if(e.target && (e.target.id==='xmodalClose' || e.target.id==='xmodal')) closeFactorModal();
   });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ const m=$('#xmodal'); if(m) m.classList.add('hidden'); } });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeFactorModal(); });
 })();
 
 /* ---------- At-a-glance interactivity: category chips, search, risk sort ---------- */

@@ -71,12 +71,9 @@ h1,h2,h3{margin:0}
 .note{background:#fffaf0;border:1px solid #f0e2bd;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#5a5024}
 .note.scoring b{color:var(--ink)}
 .scoring .sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:0;margin:0 3px 0 8px}
-.factor-browser{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;align-items:start;margin-top:14px}
-.tablewrap{border:1px solid var(--line);border-radius:14px;overflow:auto;background:#fff;box-shadow:var(--shadow)}
-.factor-detail{position:sticky;top:14px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:15px;max-height:calc(100vh - 28px);overflow:auto}
-.detail-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:800;margin-bottom:7px}
+.tablewrap{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:auto;background:#fff;box-shadow:var(--shadow)}
+.detail-modal{min-width:0}
 .detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px}
-.detail-head h3{font-size:17px;line-height:1.25;letter-spacing:-.2px}
 .detail-cat{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#8a98ab;font-weight:700;margin-top:4px}
 .detail-risk{flex:none;font-size:11px;font-weight:800;padding:4px 8px;border-radius:8px;background:#f3f6fb}
 .detail-desc{font-size:12.5px;color:#475468;line-height:1.55;margin-top:12px}
@@ -117,11 +114,6 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
 .rk-no{color:var(--no)}.rk-low{color:var(--low)}.rk-mod{color:var(--mod)}.rk-high{color:var(--high)}.rk-pending{color:#8a98ab}
 .rk a.rk-link{color:inherit;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor;cursor:pointer}
 .rk a.rk-link:hover{opacity:.7;border-bottom-style:solid}
-
-@media(max-width:980px){
-  .factor-browser{grid-template-columns:1fr}
-  .factor-detail{position:relative;top:0;max-height:none}
-}
 
 /* ---------- MAP SHOTS ---------- */
 .mapshots{margin-top:30px}
