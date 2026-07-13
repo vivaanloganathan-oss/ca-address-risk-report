@@ -622,6 +622,7 @@ function renderOverall(liveResults){
   document.querySelectorAll('.topriskgrid .driver[data-n]').forEach(el=>el.addEventListener('click',()=>{
     const row=document.getElementById('sumrow-'+el.dataset.n);
     if(row){ row.scrollIntoView({behavior:'smooth', block:'center'}); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); }
+    openFactorModal(+el.dataset.n);
   }));
   const liveN = Object.keys(STATE._live||{}).length;
   $('#methodBody').innerHTML =
@@ -719,12 +720,16 @@ function buildMainMap(st){
   streets.addTo(map);
   const overlays = {};
   const layerState = {};
+  const activeLayers = new Set();
   function refreshLayerStatus(){
     const el=document.getElementById('layerStatus'); if(!el) return;
     const bad=Object.entries(layerState).filter(([,v])=>v===false).map(([k])=>k);
-    el.innerHTML = bad.length
-      ? `⚠ Couldn't load from the agency server: <b>${bad.join('</b> · <b>')}</b> — re-toggle the layer or try again shortly.`
+    const active = [...activeLayers];
+    const activeHtml = active.length ? `<div><b>Active map layers:</b> ${active.join(' · ')}</div>` : '<div><b>Active map layers:</b> Streets only</div>';
+    const badHtml = bad.length
+      ? `<div>⚠ Couldn't load from the agency server: <b>${bad.join('</b> · <b>')}</b> — re-toggle the layer or try again shortly.</div>`
       : '';
+    el.innerHTML = activeHtml + badHtml;
   }
   if(window.L && window.L.esri){
     MAP_OVERLAYS.forEach(o=>{
@@ -736,13 +741,27 @@ function buildMainMap(st){
       }catch(e){ return; }
       layer.on('requesterror', ()=>{ layerState[o.name]=false; refreshLayerStatus(); });
       layer.on('load', ()=>{ layerState[o.name]=true; refreshLayerStatus(); });
+      layer.on('add', ()=>{ activeLayers.add(o.name); refreshLayerStatus(); });
+      layer.on('remove', ()=>{ activeLayers.delete(o.name); refreshLayerStatus(); });
       overlays[o.name]=layer;
-      if(o.on) layer.addTo(map);
+      if(o.on){ activeLayers.add(o.name); layer.addTo(map); }
     });
   }
   L.control.layers({ 'Streets':streets, 'Imagery':imagery }, overlays, {collapsed:false, position:'topright'}).addTo(map);
+  const resetCtl = L.control({position:'topleft'});
+  resetCtl.onAdd = function(){
+    const div = L.DomUtil.create('button','map-reset');
+    div.type = 'button';
+    div.textContent = 'Center';
+    div.title = 'Recenter on this address';
+    L.DomEvent.disableClickPropagation(div);
+    div.addEventListener('click',()=>{ map.setView([st.lat, st.lon], 14); marker.openPopup(); });
+    return div;
+  };
+  resetCtl.addTo(map);
   L.control.scale({imperial:true}).addTo(map);
   marker = L.marker([st.lat, st.lon]).addTo(map).bindPopup(st.display).openPopup();
+  refreshLayerStatus();
 }
 
 /* ---------- Main flow ---------- */
@@ -798,6 +817,7 @@ async function analyze(){
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
   STATE._dims=d; STATE._census=census;
+  updateMapRisk(st);
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
   }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
@@ -813,20 +833,26 @@ function loadImg(src){
   return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous';
     i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=src; });
 }
+function loadImgWithTimeout(src, ms=7000){
+  return Promise.race([
+    loadImg(src),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), ms))
+  ]);
+}
 async function makePDF(){
   if(!STATE) return;
+  $('#pdf').disabled=true;
   setStatus('<span class="spinner"></span>Building PDF…');
+  try{
   const { jsPDF } = window.jspdf;
   const doc=new jsPDF({unit:'pt', format:'letter', compress:true}); // 612 x 792
   const W=612, H=792, M=40, CW=W-2*M;
-  const live=STATE._live, d=STATE._dims, c=STATE._census;
+  const live=STATE._live||{}, d=STATE._dims||{}, c=STATE._census;
 
-  // preload thumbnails (overview + per factor) in parallel
   const imgs={};
-  await Promise.all([
-    loadImg(thumbUrl(STATE.lat,STATE.lon,'street',680,300)).then(i=>imgs.cover=i).catch(()=>{}),
-    ...FACTORS.map(f=>loadImg(thumbUrl(STATE.lat,STATE.lon,f.basemap,420,300)).then(i=>imgs[f.n]=i).catch(()=>{}))
-  ]);
+  await loadImgWithTimeout(thumbUrl(STATE.lat,STATE.lon,'street',680,300), 7000)
+    .then(i=>imgs.cover=i)
+    .catch(()=>{});
 
   /* ---- Cover ---- */
   doc.setFillColor(20,28,46); doc.rect(0,0,W,168,'F');
@@ -839,7 +865,7 @@ async function makePDF(){
   doc.text(`ZIP ${STATE.zip||'n/a'}   ·   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   ·   ${new Date().toLocaleDateString()}   ·   ${FACTORS.length} factors`, M, 150);
   let y=190;
   // dimension cards
-  const dims=[['HEALTH RISK',d.health],['PROPERTY VALUE RISK',d.prop],['INSURANCE COST',d.ins]];
+  const dims=[['HEALTH RISK',d.health||'n/a'],['PROPERTY VALUE RISK',d.prop||'n/a'],['INSURANCE COST',d.ins||'n/a']];
   const bw=(CW-24)/3;
   dims.forEach((dm,i)=>{ const x=M+i*(bw+12);
     doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,y,bw,54,6,6,'FD');
@@ -851,8 +877,12 @@ async function makePDF(){
   if(c){ doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,30,6,6,'FD');
     doc.setTextColor(60,72,90); doc.setFontSize(9.5);
     doc.text(`Population (ZIP): ${c.pop}      Median income: ${c.income}      Median home: ${c.home}      Bachelor's+: ${c.bachelors}`, M+10, y+19); y+=42; }
-  if(imgs.cover){ const ih=(CW)*300/680; doc.addImage(imgs.cover,'JPEG',M,y,CW,ih);
-    doc.setDrawColor(196,30,58); doc.setLineWidth(2); doc.rect(M,y,CW,ih); doc.setLineWidth(1); y+=ih+6; }
+  if(imgs.cover){ const ih=(CW)*300/680;
+    try{
+      doc.addImage(imgs.cover,'PNG',M,y,CW,ih);
+      doc.setDrawColor(196,30,58); doc.setLineWidth(2); doc.rect(M,y,CW,ih); doc.setLineWidth(1); y+=ih+6;
+    }catch(e){}
+  }
   doc.setFontSize(8); doc.setTextColor(133,147,166);
   doc.text('Overall dimensions are indicative; per-factor detail and live lookups follow.', M, y+4);
 
@@ -911,26 +941,6 @@ async function makePDF(){
     y += cardH+10;
   });
 
-  /* ---- Map Shots ---- */
-  doc.addPage(); y=M+6;
-  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
-  doc.text('Map Shots — address in view', M, y); y+=8;
-  doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=14;
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,100,115);
-  doc.text(doc.splitTextToSize('Each thumbnail is a live basemap centered on the address. Open the linked interactive map for full hazard layers.',CW), M, y); y+=22;
-  const tw=(CW-14)/2, th=tw*300/420;
-  let col2=0;
-  FACTORS.forEach(f=>{
-    if(y+th+30 > H-30){ doc.addPage(); y=M+6; col2=0; }
-    const x=M+col2*(tw+14);
-    if(imgs[f.n]){ doc.addImage(imgs[f.n],'JPEG',x,y,tw,th); }
-    else { doc.setFillColor(230,236,243); doc.rect(x,y,tw,th,'F'); }
-    doc.setDrawColor(226,231,238); doc.rect(x,y,tw,th);
-    doc.setTextColor(20,28,46); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
-    doc.text(doc.splitTextToSize(`#${f.n} ${f.name}`,tw), x, y+th+12);
-    if(col2===1){ y+=th+34; col2=0; } else { col2=1; }
-  });
-
   /* ---- footer ---- */
   if(y>H-60){ doc.addPage(); y=M; }
   doc.setTextColor(133,147,166); doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -939,6 +949,9 @@ async function makePDF(){
   const safe=(STATE.zip||'address')+'_'+(STATE.display.split(',')[0].replace(/[^a-z0-9]+/gi,'_'));
   doc.save(`CA_Risk_Report_${safe}.pdf`);
   setStatus('✓ PDF downloaded.','ok');
+  }finally{
+    $('#pdf').disabled=false;
+  }
 }
 
 /* ---------- Address autosuggest ---------- */
