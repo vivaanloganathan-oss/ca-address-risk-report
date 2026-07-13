@@ -803,6 +803,13 @@ function renderEnvironment(env){
   </div>`;
 }
 
+function renderInsightLoading(){
+  const snap = $('#neighborhoodSnapshot');
+  const env = $('#environmentSnapshot');
+  if(snap) snap.innerHTML = '<p>Loading nearby amenities from OpenStreetMap...</p>';
+  if(env) env.innerHTML = '<p>Loading current air quality and weather...</p>';
+}
+
 /* ---------- Coverage (ZIP-specific rollout) ---------- */
 const ZIP_CITY = { '94582':'San Ramon', '94583':'San Ramon', '94506':'Danville', '94526':'Danville' };
 const LOCAL_NOTES_BY_CITY = {
@@ -961,19 +968,23 @@ async function analyze(){
   $('#locCoords').textContent = `${(+st.lat).toFixed(5)}, ${(+st.lon).toFixed(5)}`;
   setStatus(`<span class="ok">✓</span> Showing results for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
   renderLegend();
+  renderScoring();
   invalidateMapSoon();
 
   buildMainMap(st);
 
   const liveResults={};
   renderProfile(null, st);
+  renderSummaryTable(st, liveResults);
+  renderInsightLoading();
 
   // live lookups in parallel (hazards + livability)
+  const safe = (p, label) => p.catch(e => { console.warn(`${label} lookup failed`, e); return null; });
   const [census, flood, liq, lands, fault, fhsz, amen, env] = await Promise.all([
-    censusByZip(st.zip), femaFloodZone(st.lat, st.lon),
-    cgsLiquefaction(st.lat, st.lon), cgsLandslide(st.lat, st.lon),
-    cgsFault(st.lat, st.lon), calfireFHSZ(st.lat, st.lon),
-    overpassAmenities(st.lat, st.lon), localEnvironment(st.lat, st.lon)
+    safe(censusByZip(st.zip), 'Census'), safe(femaFloodZone(st.lat, st.lon), 'FEMA flood'),
+    safe(cgsLiquefaction(st.lat, st.lon), 'CGS liquefaction'), safe(cgsLandslide(st.lat, st.lon), 'CGS landslide'),
+    safe(cgsFault(st.lat, st.lon), 'CGS fault'), safe(calfireFHSZ(st.lat, st.lon), 'CAL FIRE'),
+    safe(overpassAmenities(st.lat, st.lon), 'OpenStreetMap amenities'), safe(localEnvironment(st.lat, st.lon), 'Environment')
   ]);
   renderProfile(census, st);
   if(flood){ liveResults[8]=flood; }
@@ -985,7 +996,6 @@ async function analyze(){
   if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`}; }
 
   // summary view (table) + overall risk score
-  renderScoring();
   renderSummaryTable(st, liveResults);
   STATE._live=liveResults;
   const R = renderOverall(liveResults);
