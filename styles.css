@@ -279,8 +279,9 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .riskcol .gaugebox svg{max-width:190px}
 .riskcol .gauge-num{font-size:23px;margin-top:-34px}
 .riskcol .drivers{max-height:260px;overflow:auto;padding-right:4px}
-.leaflet-control-layers{font-size:11.5px;border-radius:10px;box-shadow:var(--shadow)}
+.leaflet-control-layers{font-size:11.5px;border-radius:10px;box-shadow:var(--shadow);max-width:245px}
 .leaflet-control-layers label{margin:2px 0;border-radius:7px;padding:3px 5px}
+.leaflet-control-layers-list{max-height:420px;overflow:auto}
 .leaflet-control-layers label:has(input:checked){background:#eaf1fe;color:#174ea6;font-weight:800}
 .leaflet-control-layers label:has(input:checked) span{color:#174ea6}
 

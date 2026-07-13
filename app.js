@@ -888,9 +888,16 @@ const MAP_OVERLAYS = [
 function buildMainMap(st){
   if(map){ try{ map.remove(); }catch(e){} map=null; }
   map = L.map('map', { scrollWheelZoom:true }).setView([st.lat, st.lon], 13);
-  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'\u00a9 OpenStreetMap'});
-  const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'\u00a9 Esri'});
-  streets.addTo(map);
+  const esriAttr = 'Tiles \u00a9 Esri';
+  const basemaps = {
+    'Esri Streets': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:esriAttr}),
+    'Esri Topographic': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:esriAttr}),
+    'Esri Light Gray': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:esriAttr}),
+    'Esri Navigation': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Specialty/World_Navigation_Charts/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:esriAttr}),
+    'Esri Imagery': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:esriAttr}),
+    'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'\u00a9 OpenStreetMap'})
+  };
+  basemaps['Esri Topographic'].addTo(map);
   const overlays = {};
   const layerState = {};
   const activeLayers = new Set();
@@ -898,7 +905,7 @@ function buildMainMap(st){
     const el=document.getElementById('layerStatus'); if(!el) return;
     const bad=Object.entries(layerState).filter(([,v])=>v===false).map(([k])=>k);
     const active = [...activeLayers];
-    const baseName = map.hasLayer(imagery) ? 'Imagery' : 'Streets';
+    const baseName = Object.entries(basemaps).find(([,layer])=>map.hasLayer(layer))?.[0] || 'Basemap';
     const activeHtml = active.length ? `<div><b>Active map layers:</b> ${baseName} · ${active.join(' · ')}</div>` : `<div><b>Active map layers:</b> ${baseName} only</div>`;
     const badHtml = bad.length
       ? `<div>⚠ Couldn't load from the agency server: <b>${bad.join('</b> · <b>')}</b> — re-toggle the layer or try again shortly.</div>`
@@ -925,7 +932,7 @@ function buildMainMap(st){
       if(o.on){ activeLayers.add(o.name); layer.addTo(map); }
     });
   }
-  L.control.layers({ 'Streets':streets, 'Imagery':imagery }, overlays, {collapsed:false, position:'topright'}).addTo(map);
+  L.control.layers(basemaps, overlays, {collapsed:false, position:'topright'}).addTo(map);
   map.on('baselayerchange overlayadd overlayremove', refreshLayerStatus);
   L.control.scale({imperial:true}).addTo(map);
   marker = L.marker([st.lat, st.lon]).addTo(map).bindPopup(st.display).openPopup();
