@@ -745,12 +745,16 @@ function updateMapRisk(st){
 /* ---------- Interactive live hazard map ---------- */
 /* Verified public agency services drawn as toggleable overlays. */
 const MAP_OVERLAYS = [
-  { name:'FEMA Flood Zones',              type:'dynamic', on:true,
-    url:'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer', layers:[28], opacity:.45 },
-  { name:'Liquefaction Zones (CGS)',      type:'dynamic',
-    url:'https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Liquefaction_Zones/MapServer', layers:[0], opacity:.55 },
-  { name:'Landslide Zones (CGS)',         type:'dynamic',
-    url:'https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Landslide_Zones/MapServer', layers:[0], opacity:.55 },
+  { name:'FEMA Flood Zones',              type:'feature', on:true,
+    url:'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28',
+    where:"SFHA_TF = 'T'",
+    style:{ color:'#0969da', weight:1.5, opacity:.8, fillColor:'#4dabf7', fillOpacity:.28 } },
+  { name:'Liquefaction Zones (CGS)',      type:'feature',
+    url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Liquefaction_Zones/FeatureServer/0',
+    style:{ color:'#d97706', weight:1, opacity:.85, fillColor:'#f59e0b', fillOpacity:.25 } },
+  { name:'Landslide Zones (CGS)',         type:'feature',
+    url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Landslide_Zones/FeatureServer/0',
+    style:{ color:'#15803d', weight:1, opacity:.85, fillColor:'#22c55e', fillOpacity:.22 } },
   { name:'Earthquake Fault Lines (CGS)',  type:'feature',
     url:'https://services2.arcgis.com/zr3KAIbsRSUyARHG/arcgis/rest/services/CGS_Alquist_Priolo_Fault_Traces/FeatureServer/0',
     style:{ color:'#c41e3a', weight:3, opacity:.9 } },
@@ -783,7 +787,9 @@ function buildMainMap(st){
       let layer=null;
       try{
         if(o.type==='feature'){
-          layer = L.esri.featureLayer({url:o.url, style:()=>o.style||{}});
+          const opts = { url:o.url, style:o.style || (()=>({})) };
+          if(o.where) opts.where = o.where;
+          layer = L.esri.featureLayer(opts);
         }else{
           layer = L.esri.dynamicMapLayer({url:o.url, opacity:o.opacity ?? .5, layers:o.layers, format:'png32'});
         }
