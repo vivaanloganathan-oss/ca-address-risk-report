@@ -242,10 +242,12 @@ async function overpassAmenities(lat,lon){
     nwr(around:1500,${lat},${lon})[building=construction];
     nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];
   );out tags qt 600;`;
-  try{
-    const res=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q});
-    if(!res.ok) return null;
-    const j=await res.json();
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter'
+  ];
+  const parse = j => {
     const c={uni:0,eat:0,shop:0,park:0,health:0,hosp:0,transit:0,station:0,junction:0,constr:0,community:0};
     (j.elements||[]).forEach(e=>{const t=e.tags||{};
       if(/^(university|college)$/.test(t.amenity||'')) c.uni++;
@@ -261,7 +263,15 @@ async function overpassAmenities(lat,lon){
       else if(/^(library|community_centre|place_of_worship)$/.test(t.amenity||'')) c.community++;
     });
     return c;
-  }catch(e){ return null; }
+  };
+  for(const endpoint of endpoints){
+    try{
+      const res=await fetch(endpoint,{method:'POST',body:q});
+      if(!res.ok) continue;
+      return parse(await res.json());
+    }catch(e){}
+  }
+  return null;
 }
 
 async function localEnvironment(lat, lon){
@@ -723,14 +733,17 @@ function goodFactors(liveResults, amen){
 }
 function renderInsights(st, R, census, amen, liveResults){
   const retail = amen ? amen.eat + amen.shop : null;
-  $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
-    <div><b>${retail}</b><span>Dining / retail</span></div>
-    <div><b>${amen.park}</b><span>Parks</span></div>
-    <div><b>${amen.transit + amen.station}</b><span>Transit points</span></div>
-    <div><b>${amen.health}</b><span>Healthcare</span></div>
-    <div><b>${amen.community}</b><span>Community places</span></div>
-    <div><b>${amen.constr}</b><span>Construction</span></div>
-  </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
+  const items = [
+    [amen ? retail : 'n/a', 'Dining / retail'],
+    [amen ? amen.park : 'n/a', 'Parks'],
+    [amen ? amen.transit + amen.station : 'n/a', 'Transit points'],
+    [amen ? amen.health : 'n/a', 'Healthcare'],
+    [amen ? amen.community : 'n/a', 'Community places'],
+    [amen ? amen.constr : 'n/a', 'Construction']
+  ];
+  $('#neighborhoodSnapshot').innerHTML = `<div class="snapgrid">
+    ${items.map(([v,k])=>`<div class="${v==='n/a'?'muted':''}"><b>${v}</b><span>${k}</span></div>`).join('')}
+  </div>${amen ? '' : '<p class="snapnote">Amenity counts are temporarily unavailable from OpenStreetMap. Other live layers still loaded.</p>'}`;
 }
 
 function aqiLabel(aqi){
