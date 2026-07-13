@@ -320,6 +320,35 @@ function renderSummaryTable(st, liveResults){
   wireImpactLinks();
 }
 
+/* Impact-summary mapping embedded directly (fallback if explanations.js fails to load) */
+window.FACTOR_EXPLAIN = window.FACTOR_EXPLAIN || {
+  5: ["explanations/f5_1.jpg"],
+  6: ["explanations/f6_1.jpg"],
+  7: ["explanations/f7_1.jpg", "explanations/f7_2.jpg"],
+  8: ["explanations/f8_1.jpg", "explanations/f8_2.jpg"],
+  9: ["explanations/f9_1.jpg", "explanations/f9_2.jpg"],
+  10: ["explanations/f10_1.jpg", "explanations/f10_2.jpg"],
+  11: ["explanations/f11_1.jpg", "explanations/f11_2.jpg"],
+  13: ["explanations/f13_1.jpg", "explanations/f13_2.jpg"],
+  14: ["explanations/f14_1.jpg", "explanations/f14_2.jpg", "explanations/f14_3.jpg"],
+  15: ["explanations/f15_1.jpg", "explanations/f15_2.jpg", "explanations/f15_3.jpg", "explanations/f15_4.jpg", "explanations/f15_5.jpg", "explanations/f15_6.jpg"],
+  16: ["explanations/f16_1.jpg", "explanations/f16_2.jpg", "explanations/f16_3.jpg", "explanations/f16_4.jpg"],
+  17: ["explanations/f17_1.jpg", "explanations/f17_2.jpg", "explanations/f17_3.jpg", "explanations/f17_4.jpg"],
+  18: ["explanations/f18_1.jpg", "explanations/f18_2.jpg"],
+  19: ["explanations/f19_1.jpg", "explanations/f19_2.jpg", "explanations/f19_3.jpg", "explanations/f19_4.jpg"],
+  23: ["explanations/f23_1.jpg"],
+  24: ["explanations/f24_1.jpg", "explanations/f24_2.jpg", "explanations/f24_3.jpg"],
+  25: ["explanations/f25_1.jpg", "explanations/f25_2.jpg", "explanations/f25_3.jpg", "explanations/f25_4.jpg"],
+  26: ["explanations/f26_1.jpg", "explanations/f26_2.jpg", "explanations/f26_3.jpg", "explanations/f26_4.jpg"],
+  27: ["explanations/f27_1.jpg", "explanations/f27_2.jpg"],
+  28: ["explanations/f28_1.jpg", "explanations/f28_2.jpg", "explanations/f28_3.jpg", "explanations/f28_4.jpg"],
+  29: ["explanations/f29_1.jpg", "explanations/f29_2.jpg", "explanations/f29_3.jpg", "explanations/f29_4.jpg"],
+  30: ["explanations/f30_1.jpg", "explanations/f30_2.jpg", "explanations/f30_3.jpg"],
+  31: ["explanations/f31_1.jpg", "explanations/f31_2.jpg"],
+  32: ["explanations/f32_1.jpg", "explanations/f32_2.jpg"],
+  33: ["explanations/f33_1.jpg", "explanations/f33_2.jpg", "explanations/f33_3.jpg", "explanations/f33_4.jpg"],
+};
+
 /* ---------- Impact summary modal (from factor-explanation workbooks) ---------- */
 function wireImpactLinks(){
   document.querySelectorAll('#summaryTable .impact-link').forEach(a=>a.addEventListener('click',e=>{
