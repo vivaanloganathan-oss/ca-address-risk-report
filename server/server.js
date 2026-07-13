@@ -195,7 +195,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v16-amenity-fresh-search'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v17-amenity-fast-fallback'; // bump when editing; check at GET /
 
 function emptyAmenityCounts() {
   return { uni: 0, eat: 0, shop: 0, park: 0, health: 0, hosp: 0, transit: 0, station: 0, junction: 0, constr: 0, community: 0 };
@@ -246,7 +246,7 @@ function countAmenityElements(elements = []) {
 
 async function fetchOverpassAmenityCounts(endpoint, lat, lon) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 22000);
+  const timer = setTimeout(() => controller.abort(), 12000);
   try {
     const body = new URLSearchParams({ data: amenityQuery(lat, lon) });
     const res = await fetch(endpoint, {
@@ -288,9 +288,14 @@ async function amenityCounts(lat, lon, fresh = false) {
   if (!fresh && fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs < CACHE_TTL_MS) {
     return { counts: JSON.parse(fs.readFileSync(file, 'utf8')), cached: true };
   }
-  const counts = await amenityCountsLive(lat, lon);
-  fs.writeFileSync(file, JSON.stringify(counts));
-  return { counts, cached: false };
+  try {
+    const counts = await amenityCountsLive(lat, lon);
+    fs.writeFileSync(file, JSON.stringify(counts));
+    return { counts, cached: false };
+  } catch (e) {
+    if (fs.existsSync(file)) return { counts: JSON.parse(fs.readFileSync(file, 'utf8')), cached: true, stale: true };
+    throw e;
+  }
 }
 
 // A single unhandled rejection kills modern Node outright — which shows up in

@@ -244,24 +244,77 @@ function emptyAmenityCounts(){
 function amenityTotal(c){
   return c ? ['eat','shop','park','health','transit','station','community','constr'].reduce((sum,k)=>sum+(+c[k]||0),0) : 0;
 }
+function amenityQuery(lat,lon){
+  return `[out:json][timeout:25];(
+    nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];
+    nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];
+    nwr(around:1500,${lat},${lon})[shop];
+    nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];
+    nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];
+    nwr(around:1200,${lat},${lon})[highway=bus_stop];
+    nwr(around:1200,${lat},${lon})[public_transport=platform];
+    nwr(around:3000,${lat},${lon})[railway=station];
+    nwr(around:4000,${lat},${lon})[highway=motorway_junction];
+    nwr(around:1500,${lat},${lon})[landuse=construction];
+    nwr(around:1500,${lat},${lon})[building=construction];
+    nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];
+  );out tags qt 600;`;
+}
+function countAmenityElements(elements){
+  const c = emptyAmenityCounts();
+  delete c._fallback;
+  (elements||[]).forEach(e=>{const t=e.tags||{};
+    if(/^(university|college)$/.test(t.amenity||'')) c.uni++;
+    else if(/^(restaurant|cafe|fast_food)$/.test(t.amenity||'')) c.eat++;
+    else if(t.shop) c.shop++;
+    else if(/^(park|playground|pitch|garden)$/.test(t.leisure||'')) c.park++;
+    else if((t.amenity||'')==='hospital'){c.hosp++;c.health++;}
+    else if(/^(clinic|doctors|pharmacy)$/.test(t.amenity||'')) c.health++;
+    else if(t.highway==='bus_stop'||t.public_transport==='platform') c.transit++;
+    else if(t.railway==='station') c.station++;
+    else if(t.highway==='motorway_junction') c.junction++;
+    else if(t.landuse==='construction'||t.building==='construction') c.constr++;
+    else if(/^(library|community_centre|place_of_worship)$/.test(t.amenity||'')) c.community++;
+  });
+  return c;
+}
 async function overpassAmenitiesBackend(lat,lon){
   const base = ((window.APP_CONFIG||{}).MAPSHOT_API_BASE || '').replace(/\/+$/,'');
   if(!base) return null;
   try{
     const cacheBust = `${ANALYZE_RUN}-${Date.now()}`;
-    const res = await fetchWithAbort(`${base}/api/amenities?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&fresh=1&_=${encodeURIComponent(cacheBust)}`, {
+    const res = await fetchWithAbort(`${base}/api/amenities?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&_=${encodeURIComponent(cacheBust)}`, {
       headers:{'Accept':'application/json','Cache-Control':'no-cache'},
       cache:'no-store'
-    }, 22000);
+    }, 6500);
     if(!res.ok) return null;
     const j = await res.json();
     return j && j.counts ? j.counts : null;
   }catch(e){ return null; }
 }
+async function overpassAmenitiesDirect(lat,lon){
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter'
+  ];
+  const body = new URLSearchParams({data:amenityQuery(lat,lon)});
+  for(const endpoint of endpoints){
+    try{
+      const res = await fetchWithAbort(endpoint, {method:'POST', body}, 18000);
+      if(!res.ok) continue;
+      const j = await res.json();
+      const counts = countAmenityElements(j.elements || []);
+      if(amenityTotal(counts) > 0) return counts;
+    }catch(e){}
+  }
+  return null;
+}
 async function overpassAmenities(st){
   const lat = st.lat, lon = st.lon;
   const live = await overpassAmenitiesBackend(lat,lon);
-  return amenityTotal(live) > 0 ? live : null;
+  if(amenityTotal(live) > 0) return live;
+  const direct = await overpassAmenitiesDirect(lat,lon);
+  return amenityTotal(direct) > 0 ? direct : null;
 }
 
 async function localEnvironment(lat, lon){
