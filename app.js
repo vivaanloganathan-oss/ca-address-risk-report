@@ -1058,7 +1058,6 @@ async function makePDF(){
   const live=STATE._live||{}, d=STATE._dims||{}, c=STATE._census, amen=STATE._amen, env=STATE._env;
   const reportRisk = STATE._risk || computeRisk(live);
   const pdfBand = v => String(v || 'n/a').replace(/\s*·\s*[\d.]+\/10/g, '');
-  const riskLabel = label => (label || 'Open map to assess').replace(' Risk','');
 
   /* ---- Cover ---- */
   doc.setFillColor(20,28,46); doc.rect(0,0,W,168,'F');
@@ -1133,60 +1132,60 @@ async function makePDF(){
   box(M,y,CW,88,'How to read this');
   para('Factors are grouped as No, Low, Moderate, or High based on live public-agency data where an API exists. Other factors show their typical impact and an agency map link recentered on the address.', M+12, y+38, CW-24, 9.5);
 
-  /* ---- Factor cards ---- */
+  /* ---- Compact factor appendix ---- */
   doc.addPage(); y=M+6;
-  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
-  doc.text('Factor Assessments', M, y); y+=8;
-  doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=14;
-
   const LVLPDF={ // [fill, border, text]
     'NA':[[238,241,245],[224,229,236],[107,120,136]],
     'No':[[234,240,246],[214,224,234],[70,99,124]],
     'Low':[[231,246,238],[200,234,214],[21,122,66]],
     'Moderate':[[253,242,220],[244,219,168],[167,103,0]],
     'High':[[253,231,235],[246,196,206],[187,29,56]] };
-  const chip=(x,yy,label,val)=>{
-    const t=`${label}: ${val}`; doc.setFontSize(8);
+  const levelTag=(x,yy,val)=>{
+    const t=String(val||'NA'); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
     const w=doc.getTextWidth(t)+12;
     const c=LVLPDF[val]||LVLPDF['NA'];
-    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,15,3,3,'FD');
-    doc.setTextColor(...c[2]); doc.text(t,x+6,yy+10); return w+6;
+    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,14,3,3,'FD');
+    doc.setTextColor(...c[2]); doc.text(t,x+6,yy+9.5); return w;
   };
+  const appendixHeader=()=>{
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
+    doc.text('Factor Appendix', M, y); y+=8;
+    doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=13;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
+    doc.text('Impact bands only. Open the interactive report for expandable explanations and live maps.', M, y); y+=16;
+    doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,20,5,5,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
+    doc.text('FACTOR', M+10, y+13);
+    doc.text('CATEGORY', M+212, y+13);
+    doc.text('HEALTH', M+314, y+13);
+    doc.text('PROPERTY', M+376, y+13);
+    doc.text('INSURANCE', M+454, y+13);
+    doc.text('LINK', M+512, y+13);
+    y+=24;
+  };
+  appendixHeader();
   FACTORS.forEach(f=>{
     const cat = f.cat || 'Other';
     const lv=live[f.n]; const rk=riskKey(lv&&lv.label); const col=PDFRC[rk];
     const detail=(lv&&lv.desc)?lv.desc:f.detail;
-    doc.setFontSize(9.5); const dl=doc.splitTextToSize(detail, CW-24);
-    const cardH = 22 + 14 + dl.length*11 + 8 + 15 + 8 + 12 + 14;
-    if(y+cardH > H-44){ doc.addPage(); y=M+6; }
-    // card frame
-    doc.setDrawColor(226,231,238); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,cardH,7,7,'FD');
-    doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,4,cardH-2,'F'); // left stripe
-    let yy=y+16;
-    doc.setTextColor(133,147,166); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
-    doc.text(cat.toUpperCase(), M+14, yy);
-    doc.setTextColor(20,28,46); doc.setFontSize(11.5); doc.text(`#${f.n}  ${f.name}`, M+14, yy+14);
-    // badge
-    const blabel = lv ? riskLabel(lv.label) : 'Open map to assess';
-    doc.setFontSize(8.5); const bw2=doc.getTextWidth(blabel)+16;
-    const bx=W-M-bw2-8;
-    if(rk==='pending'){ doc.setFillColor(133,147,166);} else { doc.setFillColor(col[0],col[1],col[2]); }
-    doc.roundedRect(bx,y+10,bw2,16,4,4,'F');
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.text(blabel,bx+8,y+21);
-    // detail
-    doc.setFont('helvetica','normal'); doc.setTextColor(43,57,77); doc.setFontSize(9.5);
-    yy=y+38; doc.text(dl, M+14, yy); yy+=dl.length*11+4;
-    // dim chips (color-coded by level)
     const im=effImpact(f,lv);
-    let cx=M+14; doc.setFont('helvetica','normal');
-    cx+=chip(cx,yy,'Health',im.health.level);
-    cx+=chip(cx,yy,'Property Value',im.property.level);
-    cx+=chip(cx,yy,'Insurance',im.insurance.level);
-    yy+=24;
-    // source link
-    doc.setTextColor(59,110,165); doc.setFontSize(8.5);
-    doc.textWithLink('Open live map  (recentered on this address)', M+14, yy, {url:fill(f.map,STATE)});
-    y += cardH+10;
+    const desc = doc.splitTextToSize(detail, 188).slice(0,2);
+    const rowH = Math.max(36, 20 + desc.length*8);
+    if(y+rowH > H-52){ doc.addPage(); y=M+6; appendixHeader(); }
+    doc.setDrawColor(238,242,247); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,rowH,5,5,'FD');
+    doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,3,rowH-2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.7); doc.setTextColor(20,28,46);
+    doc.text(`#${f.n} ${f.name}`, M+10, y+14);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
+    doc.text(desc, M+10, y+25);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(43,57,77);
+    doc.text(doc.splitTextToSize(cat, 82), M+212, y+15);
+    levelTag(M+314, y+10, im.health.level);
+    levelTag(M+376, y+10, im.property.level);
+    levelTag(M+454, y+10, im.insurance.level);
+    doc.setTextColor(59,110,165); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.textWithLink('Open', M+512, y+15, {url:fill(f.map,STATE)});
+    y += rowH+6;
   });
 
   /* ---- footer ---- */
