@@ -82,9 +82,10 @@ h1,h2,h3{margin:0}
 .snap-empty{background:#f8fafd;border:1px dashed #cfd8e6;border-radius:10px;padding:12px}
 .snap-empty b{display:block;font-size:13px;color:var(--ink);margin-bottom:4px}
 .snap-empty p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.snap-subtitle{margin-top:10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:#8a98ab;font-weight:900}
 .snap-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
-.snap-actions button{background:#fff;border:1px solid var(--line);border-radius:999px;color:#42526b;cursor:pointer;font:inherit;font-size:11px;font-weight:800;padding:5px 9px}
-.snap-actions button:hover{background:#eef5ff;border-color:#bcd1fb;color:#174ea6}
+.snap-actions button,.snap-actions a{background:#fff;border:1px solid var(--line);border-radius:999px;color:#42526b;cursor:pointer;font:inherit;font-size:11px;font-weight:800;padding:5px 9px;text-decoration:none}
+.snap-actions button:hover,.snap-actions a:hover{background:#eef5ff;border-color:#bcd1fb;color:#174ea6;text-decoration:none}
 .envgrid{display:grid;gap:10px}
 .aqi-card{display:flex;align-items:center;gap:12px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:10px}
 .aqi-card b{display:block;font-size:18px;line-height:1.1;color:var(--ink)}

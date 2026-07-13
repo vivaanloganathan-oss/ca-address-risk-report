@@ -730,9 +730,20 @@ function goodFactors(liveResults, amen){
 }
 function renderInsights(st, R, census, amen, liveResults){
   if(!amen){
+    const gm = term => `https://www.google.com/maps/search/${encodeURIComponent(term + ' near ' + st.display)}`;
     $('#neighborhoodSnapshot').innerHTML = `<div class="snap-empty">
       <b>OpenStreetMap amenities unavailable</b>
-      <p>Dining, parks, transit, healthcare, community places, and construction counts could not be loaded for this run. Other hazard layers and factor details are still available.</p>
+      <p>Counts could not be loaded from OpenStreetMap for this run. Use Google Maps below to inspect nearby places around this address.</p>
+      <div class="snap-subtitle">Google Maps fallback</div>
+      <div class="snap-actions">
+        <a href="${gm('restaurants and shops')}" target="_blank" rel="noopener">Dining</a>
+        <a href="${gm('parks')}" target="_blank" rel="noopener">Parks</a>
+        <a href="${gm('transit stops')}" target="_blank" rel="noopener">Transit</a>
+        <a href="${gm('hospitals clinics pharmacies')}" target="_blank" rel="noopener">Healthcare</a>
+        <a href="${gm('community centers libraries')}" target="_blank" rel="noopener">Community</a>
+        <a href="${gm('construction')}" target="_blank" rel="noopener">Construction</a>
+      </div>
+      <div class="snap-subtitle">Factor details</div>
       <div class="snap-actions">
         <button type="button" data-snap-factor="38">Dining</button>
         <button type="button" data-snap-factor="39">Parks</button>
