@@ -20,6 +20,14 @@ let map, marker;
 let ANALYZE_RUN = 0;
 
 function setStatus(html, cls=''){ const s=$('#status'); s.className='status '+cls; s.innerHTML=html; }
+function setPageLoading(show, text='Loading report data...'){
+  const el = $('#pageLoading');
+  if(!el) return;
+  const msg = $('#pageLoadingText');
+  if(msg) msg.textContent = text;
+  el.classList.toggle('hidden', !show);
+  el.setAttribute('aria-hidden', show ? 'false' : 'true');
+}
 
 function fill(tmpl, st){
   return tmpl
@@ -921,13 +929,15 @@ async function analyze(){
   const q=$('#addr').value.trim();
   if(!q){ setStatus('Enter a California address.','err'); return; }
   $('#go').disabled=true; $('#pdf').disabled=true;
+  setPageLoading(true, 'Finding the address...');
   setStatus('<span class="spinner"></span>Geocoding address…');
   let st;
   try{ st=await geocode(q); }
-  catch(e){ setStatus(e.message,'err'); $('#go').disabled=false; return; }
+  catch(e){ setStatus(e.message,'err'); $('#go').disabled=false; setPageLoading(false); return; }
   if(runId !== ANALYZE_RUN) return;
   STATE=st;
   try{
+  setPageLoading(true, 'Building the map and report sections...');
   $('#comingsoon').classList.add('hidden');
   $('#empty').classList.add('hidden');
   $('#results').classList.remove('hidden');
@@ -945,6 +955,7 @@ async function analyze(){
   renderProfile(null, st);
   renderSummaryTable(st, liveResults);
   renderInsightLoading();
+  setPageLoading(true, 'Loading live hazards, amenities, air, and weather...');
 
   // live lookups in parallel (hazards + livability)
   const safe = (p, label) => p.catch(e => { console.warn(`${label} lookup failed`, e); return null; });
@@ -959,6 +970,7 @@ async function analyze(){
     safe(withTimeout(localEnvironment(st.lat, st.lon), 6500, 'Environment'), 'Environment')
   ]);
   if(runId !== ANALYZE_RUN) return;
+  setPageLoading(true, 'Rendering the final report...');
   renderProfile(census, st);
   if(flood){ liveResults[8]=flood; }
   if(liq){ liveResults[6]=liq; }
@@ -983,7 +995,7 @@ async function analyze(){
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
   }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
-  finally{ $('#go').disabled=false; }
+  finally{ if(runId === ANALYZE_RUN){ $('#go').disabled=false; setPageLoading(false); } }
 }
 
 /* show/resize the Leaflet map once its container is visible */
@@ -1069,7 +1081,7 @@ async function makePDF(){
   doc.setTextColor(255,255,255); doc.setFontSize(24); doc.text('Address Risk & Livability Report', M, 74);
   doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(220,228,240);
   doc.text(doc.splitTextToSize(STATE.display, CW), M, 100);
-  doc.setFontSize(10); doc.setTextColor(157,180,214);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(157,180,214);
   doc.text(`ZIP ${STATE.zip||'n/a'}   -   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   -   ${new Date().toLocaleDateString()}   -   ${FACTORS.length} factors`, M, 154);
   let y=202;
   doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,74,8,8,'FD');
@@ -1111,29 +1123,88 @@ async function makePDF(){
 
   /* ---- Latest interactive snapshot ---- */
   doc.addPage(); y=M+6;
-  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
-  doc.text('Report Summary', M, y); y+=8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(20,28,46);
+  doc.text('Report Summary', M, y); y+=10;
   doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=18;
-  const para=(txt,x,yy,w,size=9.5)=>{ doc.setFont('helvetica','normal'); doc.setFontSize(size); doc.setTextColor(43,57,77); const lines=doc.splitTextToSize(txt,w); doc.text(lines,x,yy); return yy + lines.length*(size+2); };
-  const box=(x,yy,w,h,title)=>{
-    doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,yy,w,h,7,7,'FD');
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(90,107,128); doc.text(title.toUpperCase(), x+12, yy+18);
+  const para=(txt,x,yy,w,size=9.5,color=[43,57,77],weight='normal')=>{
+    doc.setFont('helvetica',weight); doc.setFontSize(size); doc.setTextColor(...color);
+    const lines=doc.splitTextToSize(txt,w); doc.text(lines,x,yy); return yy + lines.length*(size+2);
+  };
+  const sectionLabel=(txt,x,yy)=>{ doc.setFont('helvetica','bold'); doc.setFontSize(8.7); doc.setTextColor(90,107,128); doc.text(txt.toUpperCase(), x, yy); };
+  const bandStyle = level => ({
+    High:[[253,231,235],[246,196,206],[187,29,56]],
+    Moderate:[[253,242,220],[244,219,168],[167,103,0]],
+    Low:[[231,246,238],[200,234,214],[21,122,66]],
+    No:[[234,240,246],[214,224,234],[70,99,124]],
+  }[level] || [[238,241,245],[224,229,236],[107,120,136]]);
+  const riskChip=(x,yy,label)=>{
+    const text = String(label || 'Review').replace(' Risk','');
+    const c = bandStyle(text);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
+    const w=doc.getTextWidth(text)+14;
+    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,17,4,4,'FD');
+    doc.setTextColor(...c[2]); doc.text(text,x+7,yy+11.5);
+    return w;
   };
   const topItems = [...(reportRisk.overall.items||[])].sort((a,b)=>b.v-a.v || (b.live?1:0)-(a.live?1:0));
   const topHigh = topItems.filter(x=>x.level==='High').slice(0,3);
   const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
-  const topLine = arr => arr.length ? arr.map(x=>`#${x.n} ${x.name}`).join('; ') : 'None identified.';
-  box(M,y,CW,86,'Top watch items');
-  para(`Primary watch factors: ${topLine(topHigh)} Secondary watch factors: ${topLine(topMod)}`, M+12, y+38, CW-24, 9.5);
-  y+=100;
-  const half=(CW-12)/2;
-  box(M,y,half,104,'Neighborhood snapshot');
-  const retail = amen ? amen.eat + amen.shop : 'n/a';
-  const snapText = amen
-    ? `Dining / retail: ${retail}. Parks: ${amen.park}. Transit points: ${amen.transit + amen.station}. Healthcare: ${amen.health}. Community places: ${amen.community}. Construction: ${amen.constr}.`
-    : 'Neighborhood amenities were unavailable from OpenStreetMap for this run.';
-  para(snapText, M+12, y+38, half-24, 9.5);
-  box(M+half+12,y,half,104,'Air + weather');
+  const riskRow=(x,yy,w,item,accent)=>{
+    doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(x,yy,w,29,6,6,'FD');
+    doc.setFillColor(...accent); doc.rect(x,yy+1,3,27,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.6); doc.setTextColor(20,28,46);
+    doc.text(doc.splitTextToSize(`#${item.n} ${item.name}`, 118), x+10, yy+17);
+    const chipW = riskChip(x+126, yy+7, item.level);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(90,107,128);
+    doc.text(doc.splitTextToSize(item.why || '', Math.max(60, w-146-chipW)), x+132+chipW, yy+12);
+  };
+  sectionLabel('Top risks in this area', M, y);
+  y+=24;
+  const colGap=14, colW=(CW-colGap)/2;
+  sectionLabel('Top high-risk factors', M, y);
+  sectionLabel('Top moderate-risk factors', M+colW+colGap, y);
+  y+=12;
+  const rows=Math.max(topHigh.length, topMod.length, 1);
+  for(let i=0;i<rows;i++){
+    if(topHigh[i]) riskRow(M,y,colW,topHigh[i],[196,30,58]);
+    if(topMod[i]) riskRow(M+colW+colGap,y,colW,topMod[i],[224,138,0]);
+    y+=39;
+  }
+  if(c){
+    y+=8;
+    const prof=[['Population (ZIP)',c.pop],['Median Household Income',c.income],['Median Home Value',c.home],["Bachelor's+ Degree",c.bachelors]];
+    const pw=(CW-18)/4;
+    prof.forEach(([k,v],i)=>{
+      const x=M+i*(pw+6);
+      doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,y,pw,47,6,6,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(107,120,136); doc.text(k.toUpperCase(), x+8, y+15);
+      doc.setFontSize(10.5); doc.setTextColor(20,28,46); doc.text(String(v), x+8, y+32);
+    });
+    y+=66;
+  }else{
+    y+=8;
+  }
+  const panelGap=16, panelW=(CW-panelGap)/2;
+  const retail = amen ? amen.eat + amen.shop : null;
+  const snapItems = amen
+    ? [[retail,'Dining / retail'],[amen.park,'Parks'],[amen.transit + amen.station,'Transit points'],[amen.health,'Healthcare'],[amen.community,'Community places'],[amen.constr,'Construction']]
+    : null;
+  const panelH=160;
+  doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,panelW,panelH,8,8,'FD');
+  sectionLabel('Neighborhood snapshot', M+12, y+18);
+  if(snapItems){
+    const tileW=(panelW-34)/2, tileH=34;
+    snapItems.forEach(([v,k],i)=>{
+      const x=M+12+(i%2)*(tileW+10), yy=y+32+Math.floor(i/2)*(tileH+8);
+      doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(x,yy,tileW,tileH,5,5,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20,28,46); doc.text(String(v), x+8, yy+15);
+      doc.setFontSize(7); doc.setTextColor(90,107,128); doc.text(k, x+8, yy+27);
+    });
+  }else{
+    para('Neighborhood amenities could not be loaded from OpenStreetMap for this run.', M+12, y+48, panelW-24, 9.2);
+  }
+  doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(M+panelW+panelGap,y,panelW,panelH,8,8,'FD');
+  sectionLabel('Air + weather', M+panelW+panelGap+12, y+18);
   const w = (env && env.weather && env.weather.current) || {};
   const a = (env && env.air && env.air.current) || {};
   const aqi = a.us_aqi == null ? null : Math.round(+a.us_aqi);
@@ -1141,14 +1212,31 @@ async function makePDF(){
   const temp = w.temperature_2m == null ? 'n/a' : `${Math.round(+w.temperature_2m)} F`;
   const wind = w.wind_speed_10m == null ? 'n/a' : `${Math.round(+w.wind_speed_10m)} mph ${windDirection(w.wind_direction_10m)}`;
   const humid = w.relative_humidity_2m == null ? 'n/a' : `${Math.round(+w.relative_humidity_2m)}%`;
-  const envText = env ? `US AQI: ${aqi ?? 'n/a'} (${aq.label}). Temperature: ${temp}. Wind: ${wind}. Humidity: ${humid}. ${aq.note}` : 'Air quality and weather were unavailable for this run.';
-  para(envText, M+half+24, y+38, half-24, 9.5);
-  y+=124;
-  box(M,y,CW,74,'Active map layers');
-  para('OpenStreetMap basemap; FEMA Flood Zones; Liquefaction Zones (CGS); Landslide Zones (CGS); Earthquake Fault Lines (CGS); Fire Hazard Severity (CAL FIRE).', M+12, y+38, CW-24, 9.5);
-  y+=92;
-  box(M,y,CW,88,'How to read this');
-  para('Factors are grouped as No, Low, Moderate, or High based on live public-agency data where an API exists. Other factors show their typical impact and an agency map link recentered on the address.', M+12, y+38, CW-24, 9.5);
+  const ax=M+panelW+panelGap+12, ay=y+32;
+  doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(ax,ay,panelW-24,48,6,6,'FD');
+  doc.setDrawColor(235,238,244); doc.setLineWidth(7); doc.circle(ax+25,ay+24,17,'S');
+  doc.setDrawColor(224,138,0); doc.setLineWidth(7); doc.circle(ax+25,ay+24,17,'S'); doc.setLineWidth(1);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,28,46); doc.text(String(aqi ?? 'n/a'), ax+18, ay+29);
+  doc.setFontSize(12); doc.text(aq.label, ax+56, ay+23);
+  doc.setFontSize(7); doc.setTextColor(90,107,128); doc.text('US AQI', ax+56, ay+36);
+  const miniW=(panelW-44)/3;
+  [[temp,'Clouds'],[wind,'Wind'],[humid,'Humidity']].forEach(([v,k],i)=>{
+    const tx=ax+i*(miniW+8), ty=ay+60;
+    doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(tx,ty,miniW,31,5,5,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(20,28,46); doc.text(String(v), tx+6, ty+13);
+    doc.setFontSize(6.5); doc.setTextColor(90,107,128); doc.text(k, tx+6, ty+24);
+  });
+  para(aq.note, ax, ay+109, panelW-24, 8.2, [90,107,128]);
+  y+=panelH+24;
+  doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,42,6,6,'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.3); doc.setTextColor(90,107,128);
+  doc.text('Active map layers:', M+10, y+17);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.3); doc.setTextColor(90,107,128);
+  doc.text(doc.splitTextToSize('OpenStreetMap - FEMA Flood Zones - Liquefaction Zones (CGS) - Landslide Zones (CGS) - Earthquake Fault Lines (CGS) - Fire Hazard Severity (CAL FIRE)', CW-116), M+90, y+17);
+  y+=58;
+  doc.setDrawColor(226,231,238); doc.line(M,y,W-M,y); y+=18;
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(49,112,246);
+  doc.text('How risk levels are determined', M, y);
 
   /* ---- Compact factor appendix ---- */
   doc.addPage(); y=M+6;

@@ -11,6 +11,13 @@ body{margin:0;font-family:'Inter',-apple-system,'Segoe UI',Arial,sans-serif;colo
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 h1,h2,h3{margin:0}
+.page-loading{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;background:rgba(15,27,45,.48);backdrop-filter:blur(6px);padding:22px}
+.page-loading.hidden{display:none}
+.loader-card{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dbe3ef;border-radius:14px;box-shadow:var(--shadow-lg);padding:18px 22px;min-width:min(420px,92vw)}
+.loader-ring{width:42px;height:42px;border-radius:50%;border:4px solid #e7edf5;border-top-color:var(--accent);border-right-color:#e08a00;animation:spin .85s linear infinite;flex:none}
+.loader-title{font-size:15px;font-weight:800;color:var(--ink);line-height:1.2}
+.loader-text{font-size:12.5px;color:var(--muted);margin-top:3px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* ---------- HERO ---------- */
 .hero{position:relative;background:radial-gradient(1200px 500px at 80% -10%,#26426e 0,transparent 60%),linear-gradient(160deg,#0f1b2d,#1b2c47);color:#fff;padding:54px 20px 96px;overflow:hidden}
