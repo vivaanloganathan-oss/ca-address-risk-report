@@ -195,24 +195,50 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v11-amenities'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v12-combined-amenities'; // bump when editing; check at GET /
 
-const AMENITY_QUERIES = {
-  eat: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];`,
-  shop: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[shop];`,
-  park: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];`,
-  health: ({ lat, lon }) => `nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];`,
-  hosp: ({ lat, lon }) => `nwr(around:2000,${lat},${lon})[amenity=hospital];`,
-  transit: ({ lat, lon }) => `nwr(around:1200,${lat},${lon})[highway=bus_stop];nwr(around:1200,${lat},${lon})[public_transport=platform];`,
-  station: ({ lat, lon }) => `nwr(around:3000,${lat},${lon})[railway=station];`,
-  junction: ({ lat, lon }) => `nwr(around:4000,${lat},${lon})[highway=motorway_junction];`,
-  constr: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[landuse=construction];nwr(around:1500,${lat},${lon})[building=construction];`,
-  community: ({ lat, lon }) => `nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];`,
-  uni: ({ lat, lon }) => `nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];`,
-};
+function emptyAmenityCounts() {
+  return { uni: 0, eat: 0, shop: 0, park: 0, health: 0, hosp: 0, transit: 0, station: 0, junction: 0, constr: 0, community: 0 };
+}
 
-async function overpassCount(lat, lon, expr) {
-  const q = `[out:json][timeout:14];(${expr({ lat, lon })});out count;`;
+function amenityQuery(lat, lon) {
+  return `[out:json][timeout:25];(
+    nwr(around:2500,${lat},${lon})[amenity~"^(university|college)$"];
+    nwr(around:1500,${lat},${lon})[amenity~"^(restaurant|cafe|fast_food)$"];
+    nwr(around:1500,${lat},${lon})[shop];
+    nwr(around:1500,${lat},${lon})[leisure~"^(park|playground|pitch|garden)$"];
+    nwr(around:2000,${lat},${lon})[amenity~"^(hospital|clinic|doctors|pharmacy)$"];
+    nwr(around:1200,${lat},${lon})[highway=bus_stop];
+    nwr(around:1200,${lat},${lon})[public_transport=platform];
+    nwr(around:3000,${lat},${lon})[railway=station];
+    nwr(around:4000,${lat},${lon})[highway=motorway_junction];
+    nwr(around:1500,${lat},${lon})[landuse=construction];
+    nwr(around:1500,${lat},${lon})[building=construction];
+    nwr(around:1500,${lat},${lon})[amenity~"^(library|community_centre|place_of_worship)$"];
+  );out tags qt 600;`;
+}
+
+function countAmenityElements(elements = []) {
+  const c = emptyAmenityCounts();
+  elements.forEach(e => {
+    const t = e.tags || {};
+    if (/^(university|college)$/.test(t.amenity || '')) c.uni++;
+    else if (/^(restaurant|cafe|fast_food)$/.test(t.amenity || '')) c.eat++;
+    else if (t.shop) c.shop++;
+    else if (/^(park|playground|pitch|garden)$/.test(t.leisure || '')) c.park++;
+    else if ((t.amenity || '') === 'hospital') { c.hosp++; c.health++; }
+    else if (/^(clinic|doctors|pharmacy)$/.test(t.amenity || '')) c.health++;
+    else if (t.highway === 'bus_stop' || t.public_transport === 'platform') c.transit++;
+    else if (t.railway === 'station') c.station++;
+    else if (t.highway === 'motorway_junction') c.junction++;
+    else if (t.landuse === 'construction' || t.building === 'construction') c.constr++;
+    else if (/^(library|community_centre|place_of_worship)$/.test(t.amenity || '')) c.community++;
+  });
+  return c;
+}
+
+async function amenityCounts(lat, lon) {
+  const q = amenityQuery(lat, lon);
   const body = new URLSearchParams({ data: q });
   const res = await fetch('https://overpass-api.de/api/interpreter', {
     method: 'POST',
@@ -224,24 +250,7 @@ async function overpassCount(lat, lon, expr) {
   });
   if (!res.ok) throw new Error(`Overpass ${res.status}`);
   const json = await res.json();
-  return Number(json?.elements?.[0]?.tags?.total || 0);
-}
-
-async function amenityCounts(lat, lon) {
-  const counts = Object.fromEntries(Object.keys(AMENITY_QUERIES).map(k => [k, 0]));
-  const entries = await Promise.allSettled(
-    Object.entries(AMENITY_QUERIES).map(async ([key, expr]) => [key, await overpassCount(lat, lon, expr)])
-  );
-  let ok = 0;
-  for (const item of entries) {
-    if (item.status === 'fulfilled') {
-      const [key, count] = item.value;
-      counts[key] = count;
-      ok++;
-    }
-  }
-  if (!ok) throw new Error('No Overpass counts returned');
-  return counts;
+  return countAmenityElements(json?.elements || []);
 }
 
 // A single unhandled rejection kills modern Node outright — which shows up in

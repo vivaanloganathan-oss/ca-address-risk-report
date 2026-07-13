@@ -281,8 +281,8 @@ async function overpassAmenitiesBackend(lat,lon){
   }catch(e){ return null; }
 }
 async function overpassAmenities(lat,lon){
-  return await overpassAmenitiesBackend(lat,lon)
-      || await overpassAmenitiesDirect(lat,lon)
+  return await overpassAmenitiesDirect(lat,lon)
+      || await overpassAmenitiesBackend(lat,lon)
       || emptyAmenityCounts();
 }
 
