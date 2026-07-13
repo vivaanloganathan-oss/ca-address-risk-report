@@ -418,29 +418,26 @@ function openFactorModal(n){
       </div>
       <span class="detail-risk rk-${rk}">${score}</span>
     </div>
-    <div class="detail-tabs">
-      <button type="button" class="active" data-detail-tab="overview">Overview</button>
-      <button type="button" data-detail-tab="impacts">Impacts</button>
-      <button type="button" data-detail-tab="map">Map</button>
-      <button type="button" data-detail-tab="explain">Explanation</button>
-    </div>
-    <div class="detail-pane active" data-detail-pane="overview">
+    <div class="detail-section">
+      <div class="detail-section-title">Overview</div>
       <div class="detail-desc">${what}</div>
     </div>
-    <div class="detail-pane" data-detail-pane="impacts">
+    <div class="detail-section">
+      <div class="detail-section-title">Impacts</div>
       <div class="detail-impact-grid">
         ${impactBlock('Health', im.health)}
         ${impactBlock('Property value', im.property)}
         ${impactBlock('Insurance', im.insurance)}
       </div>
     </div>
-    <div class="detail-pane" data-detail-pane="map">
+    <div class="detail-section">
+      <div class="detail-section-title">Map</div>
       <div class="detail-desc">Open the live agency or map source recentered on this address.</div>
       <div class="detail-actions">
         <a class="btn primary detail-map" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>
       </div>
     </div>
-    <div class="detail-pane" data-detail-pane="explain">
+    <div class="detail-section">
       <div class="detail-section-title">Explanation</div>
       ${explain}
     </div>
@@ -448,11 +445,6 @@ function openFactorModal(n){
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
   $('#xmodal').classList.remove('hidden');
-  $('#xmodalBody').querySelectorAll('[data-detail-tab]').forEach(tab=>tab.addEventListener('click',()=>{
-    const key = tab.dataset.detailTab;
-    $('#xmodalBody').querySelectorAll('[data-detail-tab]').forEach(t=>t.classList.toggle('active', t===tab));
-    $('#xmodalBody').querySelectorAll('[data-detail-pane]').forEach(p=>p.classList.toggle('active', p.dataset.detailPane===key));
-  }));
   const btn = $('#xmodalBody').querySelector('.detail-explain-btn');
   if(btn) btn.addEventListener('click',()=>{
     const target = document.getElementById(btn.dataset.target);
