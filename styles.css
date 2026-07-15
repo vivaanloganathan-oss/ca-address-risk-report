@@ -381,6 +381,21 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .donation-actions .btn{text-align:center;padding:12px 14px}
 .donation-note{margin-top:12px;color:#7a879a;font-size:11.5px}
 @media(max-width:520px){.donation-actions{grid-template-columns:1fr}}
+.disclaimer-modal{position:fixed;inset:0;background:rgba(15,27,45,.58);z-index:3200;display:grid;place-items:center;padding:22px}
+.disclaimer-modal.hidden{display:none}
+.disclaimer-card{width:min(760px,96vw);max-height:90vh;background:#fff;border:1px solid #dfe6f0;border-radius:18px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden}
+.disclaimer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line);background:#f8fafd}
+.disclaimer-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--accent);font-weight:900;margin-bottom:4px}
+.disclaimer-head h3{font-size:20px;font-weight:900;color:var(--ink)}
+.disclaimer-close{background:none;border:0;color:var(--muted);font-size:27px;line-height:1;cursor:pointer}
+.disclaimer-body{padding:16px 20px;overflow:auto;color:#43516a;font-size:13px;line-height:1.55}
+.disclaimer-body p{margin:0 0 10px}
+.disclaimer-body h4{margin:14px 0 5px;color:var(--ink);font-size:13px}
+.disclaimer-check{display:flex;gap:10px;align-items:flex-start;padding:14px 20px;border-top:1px solid var(--line);background:#fffaf0;color:#4f4524;font-size:12.5px;font-weight:700;line-height:1.45}
+.disclaimer-check input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex:none}
+.disclaimer-actions{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line);background:#fff}
+.disclaimer-actions .btn{padding:11px 15px}
+@media(max-width:560px){.disclaimer-actions{display:grid;grid-template-columns:1fr}.disclaimer-actions .btn{width:100%}}
 
 /* ---------- Top risks lists (replaces gauge/score) ---------- */
 .riskcol{display:flex;flex-direction:column;gap:12px}

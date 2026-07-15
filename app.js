@@ -18,6 +18,7 @@ async function fetchWithAbort(url, opts={}, ms=8000){
 let STATE = null; // {addr, lat, lon, zip, city, display}
 let map, marker;
 let ANALYZE_RUN = 0;
+const DISCLAIMER_ACK_STATEMENT = 'Acknowledgement: Before downloading this PDF report, the user confirmed that they read and agree to the Disclaimer and Terms of Use, understand the data is for informational purposes only and not for decision-making, and will consult a licensed professional before making any real estate decision.';
 
 function setStatus(html, cls=''){ const s=$('#status'); s.className='status '+cls; s.innerHTML=html; }
 function setPageLoading(show, text='Loading report data...'){
@@ -620,15 +621,35 @@ function showDonationModal(){
   link.href = url;
   modal.classList.remove('hidden');
 }
+function closeDisclaimerModal(){
+  const modal = $('#disclaimerModal');
+  if(modal) modal.classList.add('hidden');
+}
+function openDisclaimerModal(){
+  if(!STATE) return;
+  const modal = $('#disclaimerModal');
+  const ack = $('#disclaimerAck');
+  const cont = $('#disclaimerContinue');
+  if(!modal || !ack || !cont) return;
+  ack.checked = false;
+  cont.disabled = true;
+  modal.classList.remove('hidden');
+}
+function downloadPdfAfterAcknowledgement(){
+  closeDisclaimerModal();
+  makePDF().catch(e=>setStatus('PDF error: '+e.message,'err'));
+}
 (function(){
   document.addEventListener('click', e=>{
     if(e.target && (e.target.id==='xmodalClose' || e.target.id==='xmodal')) closeFactorModal();
     if(e.target && (e.target.id==='donationClose' || e.target.id==='donationSkip' || e.target.id==='donationModal')) closeDonationModal();
+    if(e.target && (e.target.id==='disclaimerClose' || e.target.id==='disclaimerCancel' || e.target.id==='disclaimerModal')) closeDisclaimerModal();
   });
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
       closeFactorModal();
       closeDonationModal();
+      closeDisclaimerModal();
     }
   });
 })();
@@ -1369,7 +1390,12 @@ async function makePDF(){
   });
 
   /* ---- footer ---- */
-  if(y>H-60){ doc.addPage(); y=M; }
+  if(y>H-122){ doc.addPage(); y=M; }
+  doc.setFillColor(255,250,240); doc.setDrawColor(240,226,189); doc.roundedRect(M,H-116,CW,54,6,6,'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.2); doc.setTextColor(90,74,35);
+  doc.text('Disclaimer acknowledgement', M+10, H-99);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.3); doc.setTextColor(90,74,35);
+  doc.text(doc.splitTextToSize(DISCLAIMER_ACK_STATEMENT, CW-20), M+10, H-86);
   doc.setTextColor(133,147,166); doc.setFontSize(8); doc.setFont('helvetica','normal');
   doc.text(doc.splitTextToSize('Informational screening from public data (U.S. Census, FEMA NFHL, OpenStreetMap and each factor’s agency map). Not a substitute for a professional inspection, geotechnical study, title report, or insurance underwriting.',CW), M, H-44);
 
@@ -1442,7 +1468,9 @@ $('#go').addEventListener('click', analyze);
 $('#addr').addEventListener('input', onAddrInput);
 $('#addr').addEventListener('keydown', onAddrKey);
 document.addEventListener('click', e=>{ if(!e.target.closest('.field')) $('#suggest').classList.add('hidden'); });
-$('#pdf').addEventListener('click', ()=>{ makePDF().catch(e=>setStatus('PDF error: '+e.message,'err')); });
+$('#pdf').addEventListener('click', openDisclaimerModal);
+$('#disclaimerAck')?.addEventListener('change', e=>{ $('#disclaimerContinue').disabled = !e.target.checked; });
+$('#disclaimerContinue')?.addEventListener('click', downloadPdfAfterAcknowledgement);
 document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>{
   $('#addr').value=b.dataset.a; $('#suggest').classList.add('hidden'); analyze();
 }));

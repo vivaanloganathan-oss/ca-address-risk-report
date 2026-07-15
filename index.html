@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="styles.css?v=45"/>
+<link rel="stylesheet" href="styles.css?v=46"/>
 </head>
 <body>
 <div id="pageLoading" class="page-loading hidden" role="status" aria-live="polite" aria-hidden="true">
@@ -158,10 +158,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=43"></script>
+<script src="config.js?v=44"></script>
 <script src="factors.js?v=8"></script>
 <script src="explanations.js?v=7"></script>
-<script src="app.js?v=67"></script>
+<script src="app.js?v=68"></script>
 <div id="xmodal" class="xmodal hidden" role="dialog" aria-modal="true">
   <div class="xmodal-card">
     <div class="xmodal-head"><h3 id="xmodalTitle"></h3><button id="xmodalClose" aria-label="Close">×</button></div>
@@ -180,6 +180,51 @@
       <button id="donationSkip" class="btn ghost" type="button">No thanks</button>
     </div>
     <div class="donation-note">Donations are optional and never required to download the PDF.</div>
+  </div>
+</div>
+<div id="disclaimerModal" class="disclaimer-modal hidden" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+  <div class="disclaimer-card">
+    <div class="disclaimer-head">
+      <div>
+        <div class="disclaimer-kicker">Required before PDF download</div>
+        <h3 id="disclaimerTitle">Disclaimer &amp; Terms of Use</h3>
+      </div>
+      <button id="disclaimerClose" class="disclaimer-close" aria-label="Close disclaimer">×</button>
+    </div>
+    <div class="disclaimer-body">
+      <p><b>Please read this notice carefully before downloading or relying on any information from this site.</b></p>
+      <p>All content on this website is compiled from publicly available sources. We simply present that information in a formatted, easy-to-read way.</p>
+      <p><b>Do not decide to buy or reject a home based solely on the data shown here.</b> This information is provided for general informational purposes only and is not intended for decision-making. Please consult a licensed real estate professional for accurate data and guidance.</p>
+      <h4>1. Informational Purpose Only</h4>
+      <p>This website and any reports it generates are provided strictly for general informational and educational purposes. Nothing on this site constitutes real estate, financial, legal, insurance, environmental, health, or investment advice, and it should not be treated as a substitute for professional consultation.</p>
+      <h4>2. Publicly Sourced Data</h4>
+      <p>The information displayed is aggregated from third-party and publicly available sources, such as government agencies, public maps, and open datasets. We do not create, own, verify, or endorse the underlying data. Source data may be incomplete, outdated, or contain errors, and it may change without notice.</p>
+      <h4>3. No Warranty &amp; Accuracy</h4>
+      <p>This website and its contents are provided on an "as is" and "as available" basis, without warranties of any kind, whether express or implied. We make no guarantee that any information is current, correct, or applicable to a specific property or address.</p>
+      <h4>4. Not a Basis for Decisions</h4>
+      <p>You should not make any purchase, sale, rental, financial, or other decision based solely on information from this website. Always independently verify any detail that matters to you and seek advice from qualified, licensed professionals before acting.</p>
+      <h4>5. Limitation of Liability</h4>
+      <p>To the fullest extent permitted by law, the creators, operators, and contributors of this website shall not be liable for any direct, indirect, incidental, consequential, or other damages arising from access to, use of, or reliance on this website or its content.</p>
+      <h4>6. Third-Party Links &amp; Content</h4>
+      <p>This website may contain links to external maps, websites, or resources operated by third parties. We are not responsible for the content, accuracy, or practices of those third-party sources, and including a link does not imply endorsement.</p>
+      <h4>7. No Professional Relationship</h4>
+      <p>Use of this website does not create any professional, agency, fiduciary, or advisory relationship between you and the website's creators or operators.</p>
+      <h4>8. Educational / Student Project Notice</h4>
+      <p>This website was created as a non-commercial student project for educational purposes. It is not a licensed real estate service, appraisal tool, or professional advisory platform, and it is not affiliated with any government agency, real estate brokerage, or data provider.</p>
+      <h4>9. Fair Housing</h4>
+      <p>This website does not consider, and must not be used to evaluate, any characteristics protected under the Fair Housing Act or applicable state and local laws. It is intended only to display general, location-based public information.</p>
+      <h4>10. Changes to This Disclaimer</h4>
+      <p>We may update or modify this disclaimer at any time without prior notice. Your continued use of the website constitutes acceptance of the most current version.</p>
+      <p>By using this website and downloading any report, you accept full responsibility for how you use the information, and you agree that the creators and operators of this site are not liable for any decisions or outcomes resulting from that use.</p>
+    </div>
+    <label class="disclaimer-check">
+      <input id="disclaimerAck" type="checkbox"/>
+      <span>I have read and agree to the Disclaimer and Terms of Use above. I understand this data is for informational purposes only and not for decision-making, and I will consult a licensed professional before making any real estate decision.</span>
+    </label>
+    <div class="disclaimer-actions">
+      <button id="disclaimerCancel" class="btn ghost" type="button">Cancel</button>
+      <button id="disclaimerContinue" class="btn primary" type="button" disabled>Download PDF Report</button>
+    </div>
   </div>
 </div>
 </body>
