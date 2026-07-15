@@ -644,6 +644,13 @@ function downloadPdfAfterAcknowledgement(){
     if(e.target && (e.target.id==='xmodalClose' || e.target.id==='xmodal')) closeFactorModal();
     if(e.target && (e.target.id==='donationClose' || e.target.id==='donationSkip' || e.target.id==='donationModal')) closeDonationModal();
     if(e.target && (e.target.id==='disclaimerClose' || e.target.id==='disclaimerCancel' || e.target.id==='disclaimerModal')) closeDisclaimerModal();
+    if(e.target && e.target.id==='disclaimerContinue' && !e.target.disabled) downloadPdfAfterAcknowledgement();
+  });
+  document.addEventListener('change', e=>{
+    if(e.target && e.target.id==='disclaimerAck'){
+      const cont = $('#disclaimerContinue');
+      if(cont) cont.disabled = !e.target.checked;
+    }
   });
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
@@ -1469,8 +1476,6 @@ $('#addr').addEventListener('input', onAddrInput);
 $('#addr').addEventListener('keydown', onAddrKey);
 document.addEventListener('click', e=>{ if(!e.target.closest('.field')) $('#suggest').classList.add('hidden'); });
 $('#pdf').addEventListener('click', openDisclaimerModal);
-$('#disclaimerAck')?.addEventListener('change', e=>{ $('#disclaimerContinue').disabled = !e.target.checked; });
-$('#disclaimerContinue')?.addEventListener('click', downloadPdfAfterAcknowledgement);
 document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>{
   $('#addr').value=b.dataset.a; $('#suggest').classList.add('hidden'); analyze();
 }));
