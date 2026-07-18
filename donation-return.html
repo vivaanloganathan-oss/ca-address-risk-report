@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Thank you - Home Risk Radar</title>
+<title>Returning to Home Risk Radar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -14,15 +14,16 @@
 .mark{width:64px;height:64px;margin:0 auto 16px;border-radius:18px;background:#e9f8ef;color:#1f9d57;display:grid;place-items:center;font-size:34px;font-weight:900}
 h1{font-size:26px;line-height:1.15;margin:0 0 10px}p{margin:0;color:var(--muted);line-height:1.55;font-size:15px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.btn{border:1px solid #d4dbe6;border-radius:12px;padding:13px 15px;font:inherit;font-weight:800;cursor:pointer;text-decoration:none;color:var(--navy);background:#fff}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}@media(max-width:520px){.actions{grid-template-columns:1fr}}
 </style>
+<script>setTimeout(function(){ window.location.replace("./?donation=success"); }, 900);</script>
 </head>
 <body>
   <main class="card">
     <div class="mark">✓</div>
     <h1>Thank you for supporting Home Risk Radar</h1>
-    <p>Your donation helps improve the tool. You can close this tab, or return to the report page to download your PDF.</p>
+    <p>Your donation helps improve the tool. Returning you to the report page so you can download your PDF.</p>
     <div class="actions">
-      <button class="btn primary" type="button" onclick="window.close()">Close this tab</button>
-      <a class="btn" href="./">Return to report</a>
+      <a class="btn primary" href="./?donation=success">Return to download</a>
+      <a class="btn" href="./">Home</a>
     </div>
   </main>
 </body>

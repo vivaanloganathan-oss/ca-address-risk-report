@@ -18,6 +18,8 @@ async function fetchWithAbort(url, opts={}, ms=8000){
 let STATE = null; // {addr, lat, lon, zip, city, display}
 let map, marker;
 let ANALYZE_RUN = 0;
+let RESUME_PDF_AFTER_DONATION = false;
+const DONATION_RETURN_KEY = 'homeRiskRadarPendingPdf';
 const DISCLAIMER_ACK_STATEMENT = 'Acknowledgement: Before downloading this PDF report, the user confirmed that they read and agree to the Disclaimer and Terms of Use, understand the data is for informational purposes only and not for decision-making, and will consult a licensed professional before making any real estate decision.';
 
 function setStatus(html, cls=''){ const s=$('#status'); s.className='status '+cls; s.innerHTML=html; }
@@ -61,6 +63,28 @@ async function recordStat(kind){
 async function recordSiteView(){
   await refreshStats();
   recordStat('view');
+}
+
+function saveDonationReturnState(){
+  const addr = ($('#addr')?.value || STATE?.display || '').trim();
+  if(!addr) return;
+  try{
+    sessionStorage.setItem(DONATION_RETURN_KEY, JSON.stringify({ address: addr, ts: Date.now() }));
+  }catch(e){ /* returning from Stripe should not block download */ }
+}
+
+function loadDonationReturnState(){
+  try{
+    const raw = sessionStorage.getItem(DONATION_RETURN_KEY);
+    if(!raw) return null;
+    const data = JSON.parse(raw);
+    if(!data || !data.address || Date.now() - Number(data.ts || 0) > 1000 * 60 * 60 * 6) return null;
+    return data;
+  }catch(e){ return null; }
+}
+
+function clearDonationReturnState(){
+  try{ sessionStorage.removeItem(DONATION_RETURN_KEY); }catch(e){}
 }
 
 function fill(tmpl, st){
@@ -659,17 +683,20 @@ function closeDonationModal(){
   const modal = $("#donationModal");
   if(modal) modal.classList.add("hidden");
 }
-function showDonationModal(){
+function showDonationModal(opts={}){
   const modal = $("#donationModal");
   const buy = $("#donationBuy");
   const skip = $("#donationSkip");
   const note = $("#donationNote");
   const actions = modal ? modal.querySelector(".donation-actions") : null;
   if(!modal) return false;
-  if(buy) buy.classList.remove("hidden");
+  saveDonationReturnState();
+  if(buy) buy.classList.toggle("hidden", !!opts.afterDonation);
   if(skip) skip.textContent = "Download PDF";
   if(actions) actions.classList.add("single");
-  if(note) note.textContent = "Donation is optional. You can download the PDF with or without donating.";
+  if(note) note.textContent = opts.afterDonation
+    ? "Thank you for supporting Home Risk Radar. You can download your PDF now."
+    : "Donation is optional. You can download the PDF with or without donating.";
   modal.classList.remove("hidden");
   return true;
 }
@@ -689,6 +716,7 @@ function openDisclaimerModal(){
 }
 function startPdfDownload(){
   closeDonationModal();
+  clearDonationReturnState();
   makePDF().catch(e=>setStatus("PDF error: "+e.message,"err"));
 }
 function downloadPdfAfterAcknowledgement(){
@@ -1156,6 +1184,11 @@ async function analyze(){
   STATE._dims=d; STATE._census=census; STATE._amen=amen; STATE._env=env; STATE._risk=R;
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
+  if(RESUME_PDF_AFTER_DONATION){
+    RESUME_PDF_AFTER_DONATION = false;
+    setStatus('<span class="ok">✓</span> Donation complete — download your PDF when ready.','ok');
+    showDonationModal({afterDonation:true});
+  }
   }catch(e){ console.error(e); setStatus('Something went wrong rendering the report: '+(e.message||e),'err'); }
   finally{ if(runId === ANALYZE_RUN){ $('#go').disabled=false; setPageLoading(false); } }
 }
@@ -1540,6 +1573,21 @@ document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>
   $('#addr').value=b.dataset.a; $('#suggest').classList.add('hidden'); analyze();
 }));
 
+function handleDonationReturn(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('donation') !== 'success') return;
+  const pending = loadDonationReturnState();
+  history.replaceState(null, '', window.location.pathname + window.location.hash);
+  if(!pending){
+    setStatus('<span class="ok">✓</span> Donation complete — enter the address again to download the PDF.','ok');
+    return;
+  }
+  const input = $('#addr');
+  if(input) input.value = pending.address;
+  RESUME_PDF_AFTER_DONATION = true;
+  analyze();
+}
+
 /* build stamp: makes the deployed version visible on the page itself */
 (function(){
   const b=(window.APP_CONFIG||{}).BUILD||'unknown';
@@ -1547,4 +1595,5 @@ document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>
   if(t) t.textContent=' · build '+b;
   console.log('CA Risk Report build:', b);
   recordSiteView();
+  handleDonationReturn();
 })();
