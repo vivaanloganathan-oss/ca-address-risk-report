@@ -1,6 +1,6 @@
 /* Optional configuration. Safe to leave blank — the app works without it. */
 window.APP_CONFIG = {
-  BUILD: 'b79-site-stats-disclaimer-2026-07-18',
+  BUILD: 'b80-live-stripe-payment-link-2026-07-18',
   // Free U.S. Census API key (instant signup: https://api.census.gov/data/key_signup.html).
   // When set, the ZIP demographics panel & factor #1 auto-populate. Leave '' to skip.
   CENSUS_KEY: '17131a6e464af27065bf5f42fbbb0d1c3b3872a4',
@@ -14,5 +14,5 @@ window.APP_CONFIG = {
   MAPSHOT_API_BASE: 'https://ca-address-risk-report.onrender.com',
   // Optional Stripe-hosted donation / payment link shown before PDF download.
   // Create a Stripe Payment Link or Checkout link and paste it here. Leave blank to disable.
-  STRIPE_DONATION_URL: 'https://buy.stripe.com/test_eVq14o1vA0SS4dP1fX1Nu00'
+  STRIPE_DONATION_URL: 'https://buy.stripe.com/28E14n6qJdXi16fc2v8N200'
 };
