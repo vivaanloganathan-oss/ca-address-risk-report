@@ -206,7 +206,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v21-report-agent'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v22-report-agent-fallback'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -452,15 +452,81 @@ Rules:
 - Always include a short reminder that this is informational screening, not a substitute for licensed professional advice.`;
 }
 
-function outputTextFromResponse(data) {
-  if (typeof data?.output_text === 'string') return data.output_text.trim();
-  const chunks = [];
-  for (const item of data?.output || []) {
-    for (const content of item?.content || []) {
-      if (typeof content?.text === 'string') chunks.push(content.text);
-    }
+function collectResponseText(value, chunks = []) {
+  if (!value) return chunks;
+  if (Array.isArray(value)) {
+    for (const item of value) collectResponseText(item, chunks);
+    return chunks;
   }
-  return chunks.join('\n').trim();
+  if (typeof value !== 'object') return chunks;
+
+  for (const key of ['output_text', 'text', 'content']) {
+    if (typeof value[key] === 'string' && value[key].trim()) chunks.push(value[key].trim());
+  }
+  for (const key of ['output', 'content', 'message', 'messages']) collectResponseText(value[key], chunks);
+  return chunks;
+}
+
+function outputTextFromResponse(data) {
+  const chunks = collectResponseText(data)
+    .map(text => text.trim())
+    .filter(Boolean);
+  return [...new Set(chunks)].join('\n').trim();
+}
+
+function formatAgentList(items) {
+  return items.filter(Boolean).map(item => `- ${item}`).join('\n');
+}
+
+function fallbackAgentAnswer(question, report) {
+  const q = String(question || '').toLowerCase();
+  const topRisks = Array.isArray(report?.topRisks) ? report.topRisks.slice(0, 5) : [];
+  const factors = Array.isArray(report?.factors) ? report.factors.slice(0, 12) : [];
+  const neighborhood = report?.neighborhood || null;
+  const env = report?.airWeather || {};
+  const currentAir = env?.air?.current || env?.air || {};
+  const currentWeather = env?.weather?.current || env?.weather || {};
+
+  const riskLines = topRisks.length
+    ? topRisks.map(r => `${r.factor || 'Risk'} (${r.level || 'review'}): ${r.note || 'verify the current agency map and local disclosures.'}`)
+    : factors.filter(f => f.risk && f.risk !== 'Open map to assess').slice(0, 5).map(f => `${f.factor || 'Factor'} (${f.risk}): ${f.detail || 'review this factor in the report.'}`);
+
+  const commonCloser = 'Informational screening only; verify important decisions with official sources and licensed professionals.';
+
+  if (q.includes('insurance')) {
+    const questions = [
+      'Ask whether wildfire, flood, earthquake, landslide, and pollution-related exclusions apply to this address.',
+      'Ask for separate quotes or riders for earthquake and flood coverage where standard policies do not include them.',
+      'Ask how mapped hazard zones affect premiums, deductibles, non-renewal risk, and required mitigation work.',
+      'Ask what inspections, roof age, defensible-space documentation, foundation details, or retrofit records could improve eligibility.',
+    ];
+    if (riskLines.length) questions.unshift(`Start with these report watch items: ${riskLines.map(x => x.replace(/:.*$/, '')).join('; ')}.`);
+    return `${formatAgentList(questions)}\n\n${commonCloser}`;
+  }
+
+  if (q.includes('checklist') || q.includes('buyer') || q.includes('due diligence')) {
+    return `${formatAgentList([
+      'Confirm the address and parcel with county records and seller disclosures.',
+      riskLines.length ? `Review these priority factors: ${riskLines.map(x => x.replace(/:.*$/, '')).join('; ')}.` : 'Open the live map links for hazards that need agency verification.',
+      'Get insurance quotes before removing contingencies, including flood, fire, and earthquake where relevant.',
+      'Have inspections focus on drainage, roof/fire hardening, foundation, slope stability, and any prior permits or repairs.',
+      'Check school assignment, transit access, nearby amenities, air quality, and noise against your own needs.',
+    ])}\n\n${commonCloser}`;
+  }
+
+  const summary = [];
+  if (riskLines.length) summary.push(`Top report watch items:\n${formatAgentList(riskLines)}`);
+  if (neighborhood) {
+    summary.push(`Neighborhood snapshot: dining/retail ${neighborhood.diningRetail ?? 'n/a'}, parks ${neighborhood.parks ?? 'n/a'}, transit ${neighborhood.transit ?? 'n/a'}, healthcare ${neighborhood.healthcare ?? 'n/a'}, community places ${neighborhood.community ?? 'n/a'}, construction ${neighborhood.construction ?? 'n/a'}.`);
+  }
+  if (currentAir.us_aqi || currentAir.aqi || currentWeather.temperature_2m) {
+    const aqi = currentAir.us_aqi ?? currentAir.aqi ?? 'n/a';
+    const temp = currentWeather.temperature_2m ?? currentWeather.temperature ?? 'n/a';
+    summary.push(`Air/weather snapshot: AQI ${aqi}; temperature ${temp}${temp === 'n/a' ? '' : ' degrees'}.`);
+  }
+  if (!summary.length) summary.push('The report context is limited, so use the factor table and map links to verify the main hazards for this address.');
+  summary.push(commonCloser);
+  return summary.join('\n\n');
 }
 
 app.post('/api/agent', async (req, res) => {
@@ -498,7 +564,7 @@ ${question}`,
       console.error('[agent] OpenAI request failed', apiRes.status, data?.error || data);
       return res.status(502).json({ error: 'agent_failed', message: data?.error?.message || `OpenAI request failed: ${apiRes.status}`, server: SERVER_VERSION });
     }
-    res.json({ answer: outputTextFromResponse(data) || 'I could not generate an answer from this report context.', server: SERVER_VERSION });
+    res.json({ answer: outputTextFromResponse(data) || fallbackAgentAnswer(question, report), server: SERVER_VERSION });
   } catch (e) {
     console.error('[agent] request failed', e);
     res.status(502).json({ error: 'agent_failed', message: String(e.message || e), server: SERVER_VERSION });
