@@ -84,20 +84,6 @@ SUPABASE_STATS_ID=home-risk-radar
 Keep `SUPABASE_SERVICE_ROLE_KEY` only in Render environment variables. Do not
 commit it to GitHub or expose it in frontend JavaScript.
 
-## 6. Ask Home Risk Radar agent
-
-The report-page chat agent calls `/api/agent` on this server, and the server
-uses OpenAI with a key stored only in Render. Add these environment variables
-to the same Render web service:
-
-```bash
-OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-5
-```
-
-`OPENAI_MODEL` is optional; it defaults to `gpt-5`. Never commit
-`OPENAI_API_KEY` to GitHub or expose it in frontend JavaScript.
-
 ## Notes / limits
 
 - **Cold starts**: free tiers spin down when idle; the first request after a

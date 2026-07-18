@@ -977,111 +977,6 @@ function renderEnvironment(env){
 }
 
 
-function agentContext(){
-  if(!STATE) return null;
-  const live = STATE._live || {};
-  const risk = STATE._risk || {};
-  const census = STATE._census || null;
-  const amen = STATE._amen || null;
-  const env = STATE._env || null;
-  const factorHighlights = FACTORS.map(f=>{
-    const lr = live[f.n];
-    if(!lr) return null;
-    return {
-      number: f.n,
-      factor: f.name,
-      category: f.cat,
-      risk: lr.label || 'Open map to assess',
-      detail: lr.desc || f.what || '',
-      healthImpact: f.health || '',
-      propertyValueImpact: f.property || '',
-      insuranceImpact: f.insurance || '',
-    };
-  }).filter(Boolean).slice(0, 18);
-  const top = (risk.overall?.items || [])
-    .filter(x=>['High','Moderate'].includes(x.level))
-    .sort((a,b)=>(b.v||0)-(a.v||0))
-    .slice(0, 8)
-    .map(x=>({ factor: x.name, level: x.level, note: x.desc || '' }));
-  return {
-    address: STATE.display,
-    zip: STATE.zip,
-    city: STATE.city,
-    coordinates: { lat: STATE.lat, lon: STATE.lon },
-    topRisks: top,
-    riskDimensions: risk.dims || null,
-    census,
-    neighborhood: amen ? {
-      diningRetail: (+amen.eat || 0) + (+amen.shop || 0),
-      parks: amen.park,
-      transitPoints: (+amen.transit || 0) + (+amen.station || 0),
-      healthcare: amen.health,
-      communityPlaces: amen.community,
-      construction: amen.constr,
-      fallbackCounts: !!amen._fallback,
-    } : null,
-    airWeather: env,
-    activeMapLayers: $('#layerStatus')?.textContent || '',
-    factors: factorHighlights,
-  };
-}
-
-function resetAgentPanel(){
-  setAgentReady(false);
-  const chat = $('#agentChat');
-  if(chat) chat.innerHTML = '<div class="agent-msg agent-msg-ai">Ask about this report once analysis finishes.</div>';
-}
-
-function setAgentReady(ready){
-  const q = $('#agentQuestion');
-  const btn = $('#agentSend');
-  if(q) q.disabled = !ready;
-  if(btn) btn.disabled = !ready;
-}
-
-function addAgentMessage(text, who='ai', extraClass=''){
-  const chat = $('#agentChat');
-  if(!chat) return null;
-  const msg = document.createElement('div');
-  msg.className = `agent-msg agent-msg-${who} ${extraClass}`.trim();
-  msg.textContent = text;
-  chat.appendChild(msg);
-  chat.scrollTop = chat.scrollHeight;
-  return msg;
-}
-
-async function askReportAgent(question){
-  const q = String(question || $('#agentQuestion')?.value || '').trim();
-  if(!q) return;
-  const input = $('#agentQuestion');
-  const btn = $('#agentSend');
-  if(input) input.value = '';
-  addAgentMessage(q, 'user');
-  const loading = addAgentMessage('Thinking...', 'ai', 'loading');
-  if(btn) btn.disabled = true;
-  if(input) input.disabled = true;
-  try{
-    const base = statsBaseUrl();
-    if(!base) throw new Error('Agent backend is not configured.');
-    const res = await fetchWithAbort(`${base}/api/agent`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ question: q, report: agentContext() }),
-    }, 30000);
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error(data.message || 'Agent is not available right now.');
-    if(loading) loading.textContent = data.answer || 'No answer returned.';
-    if(loading) loading.classList.remove('loading');
-  }catch(e){
-    if(loading) loading.textContent = `${e.message || e} Add OPENAI_API_KEY in Render to enable Ask Home Risk Radar.`;
-    if(loading) loading.classList.remove('loading');
-  }finally{
-    if(input) input.disabled = false;
-    if(btn) btn.disabled = false;
-    input?.focus();
-  }
-}
-
 function renderInsightLoading(){
   const snap = $('#neighborhoodSnapshot');
   const env = $('#environmentSnapshot');
@@ -1225,7 +1120,6 @@ async function analyze(){
   const q=$('#addr').value.trim();
   if(!q){ setStatus('Enter a California address.','err'); return; }
   $('#go').disabled=true; $('#pdf').disabled=true;
-  resetAgentPanel();
   setPageLoading(true, 'Finding the address...');
   setStatus('<span class="spinner"></span>Geocoding address…');
   let st;
@@ -1283,7 +1177,6 @@ async function analyze(){
   const R = renderOverall(liveResults);
   renderInsights(st, R, census, amen, liveResults);
   renderEnvironment(env);
-  setAgentReady(true);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
   const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
   $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding & basemap © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather/Air: Open-Meteo. `
@@ -1677,9 +1570,6 @@ $('#addr').addEventListener('input', onAddrInput);
 $('#addr').addEventListener('keydown', onAddrKey);
 document.addEventListener('click', e=>{ if(!e.target.closest('.field')) $('#suggest').classList.add('hidden'); });
 $('#pdf').addEventListener('click', openDisclaimerModal);
-$('#agentSend')?.addEventListener('click', ()=>askReportAgent());
-$('#agentQuestion')?.addEventListener('keydown', e=>{ if(e.key==='Enter') askReportAgent(); });
-document.querySelectorAll('[data-agent-prompt]').forEach(b=>b.addEventListener('click',()=>askReportAgent(b.dataset.agentPrompt)));
 document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>{
   $('#addr').value=b.dataset.a; $('#suggest').classList.add('hidden'); analyze();
 }));
