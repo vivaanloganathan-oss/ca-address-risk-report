@@ -25,6 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.join(__dirname, 'cache');
 fs.mkdirSync(CACHE_DIR, { recursive: true });
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+const STATS_FILE = path.join(CACHE_DIR, 'site-stats.json');
 
 const app = express();
 app.use(cors());
@@ -195,7 +196,32 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v17-amenity-fast-fallback'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v18-site-stats'; // bump when editing; check at GET /
+
+function readStats() {
+  try {
+    const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+    return {
+      views: Number(stats.views) || 0,
+      downloads: Number(stats.downloads) || 0,
+      updatedAt: stats.updatedAt || null,
+    };
+  } catch (e) {
+    return { views: 0, downloads: 0, updatedAt: null };
+  }
+}
+
+function writeStats(stats) {
+  const next = { ...stats, updatedAt: new Date().toISOString() };
+  fs.writeFileSync(STATS_FILE, JSON.stringify(next, null, 2));
+  return next;
+}
+
+function incrementStat(name) {
+  const stats = readStats();
+  stats[name] = (Number(stats[name]) || 0) + 1;
+  return writeStats(stats);
+}
 
 function emptyAmenityCounts() {
   return { uni: 0, eat: 0, shop: 0, park: 0, health: 0, hosp: 0, transit: 0, station: 0, junction: 0, constr: 0, community: 0 };
@@ -305,10 +331,25 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 
 app.get('/', (req, res) => res.send(
   `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
-  `Endpoints: /healthz | /api/amenities?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
+  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
 ));
 
 app.get('/healthz', (req, res) => res.send('ok'));
+
+app.get('/api/stats', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ...readStats(), server: SERVER_VERSION });
+});
+
+app.post('/api/stats/view', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ...incrementStat('views'), server: SERVER_VERSION });
+});
+
+app.post('/api/stats/download', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ...incrementStat('downloads'), server: SERVER_VERSION });
+});
 
 app.get('/api/amenities', async (req, res) => {
   res.set('Cache-Control', 'no-store');

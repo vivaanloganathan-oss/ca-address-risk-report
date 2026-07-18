@@ -30,6 +30,38 @@ function setPageLoading(show, text='Loading report data...'){
   el.setAttribute('aria-hidden', show ? 'false' : 'true');
 }
 
+function statsBaseUrl(){
+  return String((window.APP_CONFIG||{}).MAPSHOT_API_BASE || '').replace(/\/+$/, '');
+}
+function formatStat(n){
+  return Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '—';
+}
+function renderStats(stats){
+  const views = $('#siteViews');
+  const downloads = $('#pdfDownloads');
+  if(views) views.textContent = formatStat(stats?.views);
+  if(downloads) downloads.textContent = formatStat(stats?.downloads);
+}
+async function refreshStats(){
+  const base = statsBaseUrl();
+  if(!base) return;
+  try{
+    const res = await fetchWithAbort(`${base}/api/stats`, {}, 5000);
+    if(res.ok) renderStats(await res.json());
+  }catch(e){ /* keep placeholders if stats are unavailable */ }
+}
+async function recordStat(kind){
+  const base = statsBaseUrl();
+  if(!base) return;
+  try{
+    const res = await fetchWithAbort(`${base}/api/stats/${kind}`, { method:'POST' }, 5000);
+    if(res.ok) renderStats(await res.json());
+  }catch(e){ /* stats should never block analysis or downloads */ }
+}
+function recordSiteView(){
+  recordStat('view');
+}
+
 function fill(tmpl, st){
   return tmpl
     .replaceAll('{ADDR}', encodeURIComponent(st.display))
@@ -1427,6 +1459,7 @@ async function makePDF(){
 
   const safe=(STATE.zip||'address')+'_'+(STATE.display.split(',')[0].replace(/[^a-z0-9]+/gi,'_'));
   doc.save(`CA_Risk_Report_${safe}.pdf`);
+  recordStat('download');
   setStatus('✓ PDF downloaded.','ok');
   }finally{
     $('#pdf').disabled=false;
@@ -1504,4 +1537,5 @@ document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>
   const t=document.getElementById('buildTag');
   if(t) t.textContent=' · build '+b;
   console.log('CA Risk Report build:', b);
+  recordSiteView();
 })();

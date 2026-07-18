@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="styles.css?v=47"/>
+<link rel="stylesheet" href="styles.css?v=48"/>
 </head>
 <body>
 <div id="pageLoading" class="page-loading hidden" role="status" aria-live="polite" aria-hidden="true">
@@ -43,6 +43,10 @@
           <button class="btn ghost" id="pdf" disabled>PDF</button>
         </div>
         <div class="status" id="status"></div>
+        <div class="site-stats" id="siteStats" aria-live="polite">
+          <span><b id="siteViews">—</b> site views</span>
+          <span><b id="pdfDownloads">—</b> PDF downloads</span>
+        </div>
         <div class="trust">45 factors · FEMA · CAL FIRE · CGS · U.S. Census · OpenStreetMap · CalEPA<span id="buildTag" class="buildtag"></span></div>
       </div>
     </div>
@@ -153,15 +157,20 @@
       <p>Try <button class="example" data-a="3001 Bishop Dr, San Ramon, CA 94583">3001 Bishop Dr, San Ramon</button> or <button class="example" data-a="1 Dr Carlton B Goodlett Pl, San Francisco, CA 94102">San Francisco City Hall</button>.</p>
     </div>
   </div>
+  <section class="main-disclaimer" aria-labelledby="mainDisclaimerTitle">
+    <h2 id="mainDisclaimerTitle">Disclaimer</h2>
+    <p>Home Risk Radar is an informational screening tool built from public and third-party data sources. It is not real estate, legal, financial, insurance, environmental, health, or professional advice.</p>
+    <p>Do not make a purchase, sale, rental, insurance, or safety decision based only on this website or its PDF report. Always verify important details with official agencies and qualified licensed professionals.</p>
+  </section>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=48"></script>
+<script src="config.js?v=49"></script>
 <script src="factors.js?v=8"></script>
 <script src="explanations.js?v=7"></script>
-<script src="app.js?v=70"></script>
+<script src="app.js?v=71"></script>
 <div id="xmodal" class="xmodal hidden" role="dialog" aria-modal="true">
   <div class="xmodal-card">
     <div class="xmodal-head"><h3 id="xmodalTitle"></h3><button id="xmodalClose" aria-label="Close">×</button></div>

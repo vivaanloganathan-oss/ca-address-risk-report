@@ -44,6 +44,9 @@ h1,h2,h3{margin:0}
 .btn.ghost:hover{background:#f1f4fa}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .trust{margin-top:17px;font-size:12px;color:#93a9c9;letter-spacing:.3px}
+.site-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px;color:#d8e4f6;font-size:12px}
+.site-stats span{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 10px}
+.site-stats b{color:#fff;font-size:13px}
 .hero .status{margin-top:14px;min-height:18px;font-size:13px;color:#dce6f6}
 .hero .status.err{color:#ffb4c0}
 .hero .status.ok{color:#9ff0c4}
@@ -60,6 +63,10 @@ h1,h2,h3{margin:0}
 
 /* ---------- LAYOUT ---------- */
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px 70px}
+.main-disclaimer{margin:28px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px;color:#4b5870}
+.main-disclaimer h2{font-size:14px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:8px}
+.main-disclaimer p{margin:0;font-size:12.5px;line-height:1.6}
+.main-disclaimer p+p{margin-top:7px}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
 .summary{margin-top:-56px;padding:20px;position:relative;z-index:2}
 .loc{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:16px}
