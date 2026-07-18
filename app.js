@@ -665,25 +665,38 @@ function closeDonationModal(){
 function showDonationModal(){
   const modal = $("#donationModal");
   const link = $("#donationStripe");
+  const skip = $("#donationSkip");
   const note = document.querySelector("#donationNote");
   const actions = modal ? modal.querySelector(".donation-actions") : null;
   if(!modal || !link) return false;
   const url = stripeDonationUrl();
+  link.dataset.url = url;
+  if(skip) skip.textContent = "Skip and download PDF";
   if(url){
-    link.href = url;
     link.classList.remove("hidden");
+    link.disabled = false;
     link.setAttribute("aria-disabled", "false");
     if(actions) actions.classList.remove("single");
-    if(note) note.textContent = "Donation is optional. You can skip and download the PDF anytime.";
+    if(note) note.textContent = "Stripe opens in a separate tab. Keep this report tab open, then return here to download the PDF.";
   }else{
-    link.href = "#";
     link.classList.add("hidden");
+    link.disabled = true;
     link.setAttribute("aria-disabled", "true");
     if(actions) actions.classList.add("single");
     if(note) note.textContent = "Stripe donation link is not configured yet. You can still download the PDF.";
   }
   modal.classList.remove("hidden");
   return true;
+}
+function openStripeDonation(){
+  const btn = $("#donationStripe");
+  const skip = $("#donationSkip");
+  const note = $("#donationNote");
+  const url = btn ? btn.dataset.url : '';
+  if(!url) return;
+  window.open(url, 'home-risk-radar-donation', 'noopener,noreferrer');
+  if(skip) skip.textContent = "Download PDF";
+  if(note) note.textContent = "Thanks for supporting Home Risk Radar. Stripe opened in another tab; return here and click Download PDF when ready.";
 }
 function closeDisclaimerModal(){
   const modal = $('#disclaimerModal');
@@ -710,6 +723,7 @@ function downloadPdfAfterAcknowledgement(){
 (function(){
   document.addEventListener('click', e=>{
     if(e.target && (e.target.id==='xmodalClose' || e.target.id==='xmodal')) closeFactorModal();
+    if(e.target && e.target.id==="donationStripe") openStripeDonation();
     if(e.target && e.target.id==="donationSkip") startPdfDownload();
     if(e.target && (e.target.id==="donationClose" || e.target.id==="donationModal")) closeDonationModal();
     if(e.target && (e.target.id==='disclaimerClose' || e.target.id==='disclaimerCancel' || e.target.id==='disclaimerModal')) closeDisclaimerModal();
