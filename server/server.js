@@ -203,7 +203,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v19-supabase-stats'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v20-supabase-stats-fallback'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -234,15 +234,34 @@ async function readSupabaseStats() {
   return normalizeStats(rows[0], 'supabase');
 }
 
+async function writeSupabaseStats(stats) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/site_stats?id=eq.${encodeURIComponent(SUPABASE_STATS_ID)}&select=views,downloads,updated_at`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders(), Prefer: 'return=representation' },
+    body: JSON.stringify({ views: stats.views, downloads: stats.downloads, updated_at: new Date().toISOString() }),
+  });
+  if (!res.ok) throw new Error(`Supabase stats update failed: ${res.status}`);
+  const rows = await res.json();
+  return normalizeStats(rows[0], 'supabase');
+}
+
 async function incrementSupabaseStat(name) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_site_stat`, {
     method: 'POST',
     headers: supabaseHeaders(),
     body: JSON.stringify({ stat_id: SUPABASE_STATS_ID, stat_name: name }),
   });
-  if (!res.ok) throw new Error(`Supabase stats increment failed: ${res.status}`);
-  const rows = await res.json();
-  return normalizeStats(Array.isArray(rows) ? rows[0] : rows, 'supabase');
+  if (res.ok) {
+    const rows = await res.json();
+    return normalizeStats(Array.isArray(rows) ? rows[0] : rows, 'supabase');
+  }
+  if (res.status !== 404) throw new Error(`Supabase stats increment failed: ${res.status}`);
+
+  // Fallback for projects where the table exists but the RPC function has not
+  // been created yet. The RPC remains preferred because it increments atomically.
+  const current = await readSupabaseStats();
+  current[name] = (Number(current[name]) || 0) + 1;
+  return writeSupabaseStats(current);
 }
 
 function readStats() {
