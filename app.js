@@ -58,7 +58,8 @@ async function recordStat(kind){
     if(res.ok) renderStats(await res.json());
   }catch(e){ /* stats should never block analysis or downloads */ }
 }
-function recordSiteView(){
+async function recordSiteView(){
+  await refreshStats();
   recordStat('view');
 }
 
