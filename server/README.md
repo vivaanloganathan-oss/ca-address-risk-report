@@ -66,6 +66,24 @@ window.APP_CONFIG = {
 Leave it `''` to disable the Map Shots section (the app falls back to the
 existing "open live map" links, same pattern as the optional Census key).
 
+## 5. Persistent site stats with Supabase
+
+The `/api/stats` endpoints use Supabase when these Render environment
+variables are set. If they are blank, the server falls back to the local
+`server/cache/site-stats.json` file, which can reset on Render restarts.
+
+1. In Supabase SQL Editor, run `supabase/site_stats.sql` from this repo.
+2. In Render, add these environment variables to the web service:
+
+```bash
+SUPABASE_URL=https://pfstzpwdgwfmtuxmhlai.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_STATS_ID=home-risk-radar
+```
+
+Keep `SUPABASE_SERVICE_ROLE_KEY` only in Render environment variables. Do not
+commit it to GitHub or expose it in frontend JavaScript.
+
 ## Notes / limits
 
 - **Cold starts**: free tiers spin down when idle; the first request after a

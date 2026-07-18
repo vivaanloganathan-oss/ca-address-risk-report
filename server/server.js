@@ -26,6 +26,13 @@ const CACHE_DIR = path.join(__dirname, 'cache');
 fs.mkdirSync(CACHE_DIR, { recursive: true });
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 const STATS_FILE = path.join(CACHE_DIR, 'site-stats.json');
+function cleanSupabaseUrl(value) {
+  return String(value || '').replace(/\/+$/, '').replace(/\/rest\/v1$/i, '');
+}
+
+const SUPABASE_URL = cleanSupabaseUrl(process.env.SUPABASE_URL);
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
+const SUPABASE_STATS_ID = process.env.SUPABASE_STATS_ID || 'home-risk-radar';
 
 const app = express();
 app.use(cors());
@@ -196,18 +203,54 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v18-site-stats'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v19-supabase-stats'; // bump when editing; check at GET /
+
+function hasSupabaseStats() {
+  return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function supabaseHeaders() {
+  return {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+function normalizeStats(stats, source = 'file') {
+  return {
+    views: Number(stats?.views) || 0,
+    downloads: Number(stats?.downloads) || 0,
+    updatedAt: stats?.updated_at || stats?.updatedAt || null,
+    source,
+  };
+}
+
+async function readSupabaseStats() {
+  const url = `${SUPABASE_URL}/rest/v1/site_stats?id=eq.${encodeURIComponent(SUPABASE_STATS_ID)}&select=views,downloads,updated_at`;
+  const res = await fetch(url, { headers: supabaseHeaders() });
+  if (!res.ok) throw new Error(`Supabase stats read failed: ${res.status}`);
+  const rows = await res.json();
+  return normalizeStats(rows[0], 'supabase');
+}
+
+async function incrementSupabaseStat(name) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_site_stat`, {
+    method: 'POST',
+    headers: supabaseHeaders(),
+    body: JSON.stringify({ stat_id: SUPABASE_STATS_ID, stat_name: name }),
+  });
+  if (!res.ok) throw new Error(`Supabase stats increment failed: ${res.status}`);
+  const rows = await res.json();
+  return normalizeStats(Array.isArray(rows) ? rows[0] : rows, 'supabase');
+}
 
 function readStats() {
   try {
     const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
-    return {
-      views: Number(stats.views) || 0,
-      downloads: Number(stats.downloads) || 0,
-      updatedAt: stats.updatedAt || null,
-    };
+    return normalizeStats(stats, 'file');
   } catch (e) {
-    return { views: 0, downloads: 0, updatedAt: null };
+    return normalizeStats(null, 'file');
   }
 }
 
@@ -221,6 +264,16 @@ function incrementStat(name) {
   const stats = readStats();
   stats[name] = (Number(stats[name]) || 0) + 1;
   return writeStats(stats);
+}
+
+async function getStats() {
+  if (hasSupabaseStats()) return readSupabaseStats();
+  return readStats();
+}
+
+async function addStat(name) {
+  if (hasSupabaseStats()) return incrementSupabaseStat(name);
+  return incrementStat(name);
 }
 
 function emptyAmenityCounts() {
@@ -336,19 +389,34 @@ app.get('/', (req, res) => res.send(
 
 app.get('/healthz', (req, res) => res.send('ok'));
 
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ ...readStats(), server: SERVER_VERSION });
+  try {
+    res.json({ ...await getStats(), server: SERVER_VERSION });
+  } catch (e) {
+    console.error('[stats] read failed', e);
+    res.status(502).json({ error: 'stats_read_failed', detail: String(e.message || e), server: SERVER_VERSION });
+  }
 });
 
-app.post('/api/stats/view', (req, res) => {
+app.post('/api/stats/view', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ ...incrementStat('views'), server: SERVER_VERSION });
+  try {
+    res.json({ ...await addStat('views'), server: SERVER_VERSION });
+  } catch (e) {
+    console.error('[stats] view increment failed', e);
+    res.status(502).json({ error: 'stats_increment_failed', detail: String(e.message || e), server: SERVER_VERSION });
+  }
 });
 
-app.post('/api/stats/download', (req, res) => {
+app.post('/api/stats/download', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ ...incrementStat('downloads'), server: SERVER_VERSION });
+  try {
+    res.json({ ...await addStat('downloads'), server: SERVER_VERSION });
+  } catch (e) {
+    console.error('[stats] download increment failed', e);
+    res.status(502).json({ error: 'stats_increment_failed', detail: String(e.message || e), server: SERVER_VERSION });
+  }
 });
 
 app.get('/api/amenities', async (req, res) => {
