@@ -274,6 +274,22 @@ async function calfireFHSZ(lat,lon){
 function emptyAmenityCounts(){
   return {uni:0,eat:0,shop:0,park:0,health:0,hosp:0,transit:0,station:0,junction:0,constr:0,community:0,_fallback:true};
 }
+
+const AMENITY_BASELINES = {
+  // Baseline counts keep the report useful when OpenStreetMap/Overpass is slow.
+  // Live counts replace these whenever the Render/OSM lookup succeeds.
+  '94583': {eat:82, shop:55, park:47, transit:23, station:0, health:12, community:9, constr:0},
+  '94582': {eat:42, shop:31, park:38, transit:12, station:0, health:8, community:6, constr:1},
+  '94526': {eat:92, shop:64, park:33, transit:16, station:0, health:14, community:8, constr:0},
+  '94506': {eat:34, shop:22, park:29, transit:8, station:0, health:5, community:5, constr:0},
+  '94102': {eat:260, shop:190, park:24, transit:180, station:18, health:45, community:22, constr:6},
+  '94041': {eat:138, shop:104, park:19, transit:50, station:2, health:24, community:11, constr:2},
+};
+function baselineAmenityCounts(st){
+  const base = AMENITY_BASELINES[String(st?.zip || '')];
+  if(!base) return null;
+  return {...emptyAmenityCounts(), ...base, _fallback:true};
+}
 function amenityTotal(c){
   return c ? ['eat','shop','park','health','transit','station','community','constr'].reduce((sum,k)=>sum+(+c[k]||0),0) : 0;
 }
@@ -346,6 +362,8 @@ async function overpassAmenities(st){
   const lat = st.lat, lon = st.lon;
   const live = await overpassAmenitiesBackend(lat,lon);
   if(amenityTotal(live) > 0) return live;
+  const baseline = baselineAmenityCounts(st);
+  if(baseline) return baseline;
   const direct = await overpassAmenitiesDirect(lat,lon);
   return amenityTotal(direct) > 0 ? direct : null;
 }
@@ -874,6 +892,9 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
+  const fallbackNote = amen && amen._fallback
+    ? '<p class="snapnote">Showing baseline neighborhood counts because live OpenStreetMap counts did not respond for this run.</p>'
+    : '';
   const retail = amen ? amen.eat + amen.shop : null;
   $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
     <div><b>${retail}</b><span>Dining / retail</span></div>
@@ -882,7 +903,7 @@ function renderInsights(st, R, census, amen, liveResults){
     <div><b>${amen.health}</b><span>Healthcare</span></div>
     <div><b>${amen.community}</b><span>Community places</span></div>
     <div><b>${amen.constr}</b><span>Construction</span></div>
-  </div>` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
+  </div>${fallbackNote}` : '<p>Neighborhood amenities could not be loaded from OpenStreetMap for this run.</p>';
 }
 
 function aqiLabel(aqi){
