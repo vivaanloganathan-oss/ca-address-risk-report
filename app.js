@@ -69,13 +69,13 @@ function saveDonationReturnState(){
   const addr = ($('#addr')?.value || STATE?.display || '').trim();
   if(!addr) return;
   try{
-    sessionStorage.setItem(DONATION_RETURN_KEY, JSON.stringify({ address: addr, ts: Date.now() }));
+    localStorage.setItem(DONATION_RETURN_KEY, JSON.stringify({ address: addr, ts: Date.now() }));
   }catch(e){ /* returning from Stripe should not block download */ }
 }
 
 function loadDonationReturnState(){
   try{
-    const raw = sessionStorage.getItem(DONATION_RETURN_KEY);
+    const raw = localStorage.getItem(DONATION_RETURN_KEY);
     if(!raw) return null;
     const data = JSON.parse(raw);
     if(!data || !data.address || Date.now() - Number(data.ts || 0) > 1000 * 60 * 60 * 6) return null;
@@ -84,7 +84,7 @@ function loadDonationReturnState(){
 }
 
 function clearDonationReturnState(){
-  try{ sessionStorage.removeItem(DONATION_RETURN_KEY); }catch(e){}
+  try{ localStorage.removeItem(DONATION_RETURN_KEY); }catch(e){}
 }
 
 function fill(tmpl, st){
