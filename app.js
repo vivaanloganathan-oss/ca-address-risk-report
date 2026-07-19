@@ -1186,7 +1186,7 @@ async function analyze(){
 
   STATE._dims=d; STATE._census=census; STATE._amen=amen; STATE._env=env; STATE._risk=R;
   $('#pdf').disabled=false;
-  setStatus(`<span class="ok">✓</span> Report ready — ${FACTORS.length} factors for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
+  setStatus(`<span class="ok">✓</span> Analysis completed successfully. Your report is ready for download.`,'ok');
   if(RESUME_PDF_AFTER_DONATION){
     RESUME_PDF_AFTER_DONATION = false;
     setStatus('<span class="ok">✓</span> Donation complete — download your PDF when ready.','ok');
