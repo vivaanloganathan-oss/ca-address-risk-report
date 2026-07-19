@@ -309,6 +309,7 @@ const AMENITY_BASELINES = {
   '94506': {eat:34, shop:22, park:29, transit:8, station:0, health:5, community:5, constr:0},
   '94102': {eat:260, shop:190, park:24, transit:180, station:18, health:45, community:22, constr:6},
   '94041': {eat:138, shop:104, park:19, transit:50, station:2, health:24, community:11, constr:2},
+  '95814': {eat:150, shop:95, park:21, transit:85, station:4, health:28, community:14, constr:5},
 };
 function baselineAmenityCounts(st){
   const base = AMENITY_BASELINES[String(st?.zip || '')];
@@ -908,6 +909,7 @@ function goodFactors(liveResults, amen){
   return good.slice(0,4);
 }
 function renderInsights(st, R, census, amen, liveResults){
+  amen = amen || baselineAmenityCounts(st);
   const fallbackNote = amen && amen._fallback
     ? '<p class="snapnote">Showing baseline neighborhood counts because live OpenStreetMap counts did not respond for this run.</p>'
     : '';
