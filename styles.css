@@ -47,9 +47,9 @@ h1,h2,h3{margin:0}
 .site-stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 18px;color:#d8e4f6;font-size:15px}
 .site-stats span{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:10px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.12);font-weight:650}
 .site-stats b{color:#fff;font-size:26px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
-.hero .status{margin-top:14px;min-height:18px;font-size:13px;color:#dce6f6}
+.hero .status{margin-top:16px;min-height:22px;font-size:15px;color:#dce6f6;font-weight:650}
 .hero .status.err{color:#ffb4c0}
-.hero .status.ok{color:#9ff0c4}
+.hero .status.ok{color:#9ff0c4;font-weight:800}
 .hero .status .spinner{border-color:rgba(255,255,255,.3);border-top-color:#fff}
 @media(max-width:980px){
   .hero{padding-top:42px}
