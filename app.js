@@ -587,6 +587,10 @@ function wireImpactLinks(){
   }));
 }
 
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[ch]));
+}
+
 function loadExplanationImages(panel){
   if(!panel || panel.dataset.loaded) return;
   const name = panel.dataset.name || 'Factor';
@@ -596,26 +600,90 @@ function loadExplanationImages(panel){
 }
 
 
-function faultLineEmbed(st){
-  const lon = Number.isFinite(+st?.lon) ? +st.lon : -115.62444999999803;
-  const lat = Number.isFinite(+st?.lat) ? +st.lat : 36.37991451381002;
-  return `<div class="arcgis-map-wrap">
-    <arcgis-embedded-map
-      style="height:600px;width:700px;"
-      item-id="2f55776584884d3b9647b9b3f78b5450"
-      theme="light"
-      bookmarks-enabled
-      heading-enabled
-      legend-enabled
-      information-enabled
-      share-enabled
-      basemap-gallery-enabled
-      time-zone-label-enabled
-      center="${lon},${lat}"
-      scale="36111.909643"
-      portal-url="https://www.arcgis.com">
-    </arcgis-embedded-map>
-  </div>`;
+const FAULT_SHAPE_LAYERS = [
+  {name:'Quaternary faults', url:'data/faults/FAM_Qt_Faults.zip', color:'#d61f4c', weight:3},
+  {name:'Pre-Quaternary faults', url:'data/faults/FAM_PreQt_Faults.zip', color:'#f59e0b', weight:2},
+  {name:'Fault creep', url:'data/faults/FAM_Fault_Creep.zip', color:'#2563eb', weight:4}
+];
+let faultMap = null;
+let faultDataPromise = null;
+
+function loadFaultData(){
+  if(faultDataPromise) return faultDataPromise;
+  faultDataPromise = Promise.all(FAULT_SHAPE_LAYERS.map(layer => {
+    if(typeof shp !== 'function') throw new Error('Fault map reader is still loading. Try again in a moment.');
+    return shp(layer.url).then(data => ({layer, data}));
+  }));
+  return faultDataPromise;
+}
+
+function eachCoord(coords, cb){
+  if(!Array.isArray(coords)) return;
+  if(typeof coords[0] === 'number' && typeof coords[1] === 'number'){
+    cb(coords[0], coords[1]);
+    return;
+  }
+  coords.forEach(c => eachCoord(c, cb));
+}
+
+function featureNearAddress(feature, st){
+  if(!feature || !feature.geometry || !st) return false;
+  const lon = +st.lon;
+  const lat = +st.lat;
+  if(!Number.isFinite(lon) || !Number.isFinite(lat)) return true;
+  const latDelta = 1.1;
+  const lonDelta = Math.max(1.1, latDelta / Math.max(0.25, Math.cos(lat * Math.PI / 180)));
+  let near = false;
+  eachCoord(feature.geometry.coordinates, (x,y) => {
+    if(Math.abs(x - lon) <= lonDelta && Math.abs(y - lat) <= latDelta) near = true;
+  });
+  return near;
+}
+
+function normalizeFaultFeatures(data){
+  if(!data) return [];
+  if(data.type === 'FeatureCollection') return data.features || [];
+  if(data.type === 'Feature') return [data];
+  if(Array.isArray(data)) return data.flatMap(normalizeFaultFeatures);
+  if(data.features) return data.features;
+  return [];
+}
+
+function faultPopup(props, layerName){
+  const p = props || {};
+  const name = p.FAULTNAME || p.FAULT_NAME || p.NAME || p.FAULT || p.FLTLABEL || p.Label || layerName;
+  const activity = p.ACTIVITY || p.SLIP_RATE || p.AGE || p.ACTIVE || '';
+  const extra = activity ? `<br><span>${esc(activity)}</span>` : '';
+  return `<b>${esc(name)}</b><br><span>${esc(layerName)}</span>${extra}`;
+}
+
+function initFaultMap(){
+  const el = $('#faultLineMap');
+  if(!el || !STATE) return;
+  if(faultMap){ try{ faultMap.remove(); }catch(e){} faultMap = null; }
+  faultMap = L.map(el, {scrollWheelZoom:true}).setView([STATE.lat, STATE.lon], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap · CGS FAM 750k'}).addTo(faultMap);
+  L.marker([STATE.lat, STATE.lon]).addTo(faultMap).bindPopup(STATE.display || 'Analyzed address').openPopup();
+  L.control.scale({imperial:true}).addTo(faultMap);
+  const status = $('#faultMapStatus');
+  if(status) status.textContent = 'Loading CGS fault layers...';
+  loadFaultData().then(results => {
+    let visibleCount = 0;
+    results.forEach(({layer, data}) => {
+      const features = normalizeFaultFeatures(data).filter(f => featureNearAddress(f, STATE));
+      visibleCount += features.length;
+      L.geoJSON({type:'FeatureCollection', features}, {
+        style: {color: layer.color, weight: layer.weight, opacity:.9},
+        onEachFeature: (feature, lyr) => lyr.bindPopup(faultPopup(feature.properties, layer.name))
+      }).addTo(faultMap);
+    });
+    if(status) status.textContent = visibleCount
+      ? `${visibleCount.toLocaleString()} nearby fault feature(s) loaded from CGS FAM 750k.`
+      : 'No nearby fault features from this dataset in the current view. Zoom out or use the official CGS map for verification.';
+    setTimeout(()=>faultMap.invalidateSize(), 80);
+  }).catch(err => {
+    if(status) status.textContent = `Fault map could not load: ${err.message || err}`;
+  });
 }
 
 function impactBlock(label, item){
@@ -628,16 +696,26 @@ function impactBlock(label, item){
 function openFaultMapModal(){
   if(!STATE) return;
   $('#xmodalTitle').textContent = 'Earthquake Fault Lines Map';
-  $('#xmodalBody').innerHTML = `<div class="detail-modal">
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
-      <div class="detail-section-title">ArcGIS fault line map</div>
-      <div class="detail-desc">Embedded map centered on ${STATE.display || 'the analyzed address'}.</div>
-      ${faultLineEmbed(STATE)}
+      <div class="detail-section-title">CGS fault line map</div>
+      <div class="detail-desc">Local CGS FAM 750k fault layers centered on ${esc(STATE.display || 'the analyzed address')}.</div>
+      <div class="fault-map-toolbar">
+        <span><i class="fault-swatch qt"></i> Quaternary</span>
+        <span><i class="fault-swatch preqt"></i> Pre-Quaternary</span>
+        <span><i class="fault-swatch creep"></i> Creep</span>
+      </div>
+      <div id="faultLineMap" class="fault-line-map"></div>
+      <div id="faultMapStatus" class="fault-map-status">Preparing fault map...</div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="${fill((FACTORS.find(f=>f.n===5)||{}).map || '', STATE)}" target="_blank" rel="noopener">Open official CGS map ↗</a>
+      </div>
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
+  if(foot) foot.textContent = 'CGS Fault Activity Map of California 1:750,000. Informational screening only.';
   $('#xmodal').classList.remove('hidden');
+  setTimeout(initFaultMap, 80);
 }
 
 function openFactorModal(n){
@@ -656,7 +734,6 @@ function openFactorModal(n){
         ${imgs.map((s,i)=>`<img src="${s}" loading="lazy" alt="${f.name} explanation ${i+1}"/>`).join('')}
        </div>`
     : `<div class="detail-empty">No explanation images are available for this factor yet.</div>`;
-  const embeddedMap = f.n === 5 ? faultLineEmbed(STATE || {}) : '';
   $('#xmodalTitle').textContent = `#${f.n} ${f.name}`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal">
     <div class="detail-head">
@@ -683,7 +760,6 @@ function openFactorModal(n){
       <div class="detail-actions">
         <a class="btn primary detail-map" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>
       </div>
-      ${embeddedMap}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Explanation</div>
@@ -724,6 +800,7 @@ function wireSummaryRows(){
 function closeFactorModal(){
   const modal = $('#xmodal');
   if(modal) modal.classList.add('hidden');
+  if(faultMap){ try{ faultMap.remove(); }catch(e){} faultMap = null; }
   SELECTED_FACTOR = null;
   document.querySelectorAll('#summaryTable tbody tr.selected').forEach(row=>{
     row.classList.remove('selected');

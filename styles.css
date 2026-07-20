@@ -146,9 +146,14 @@ h1,h2,h3{margin:0}
 .detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .detail-actions .btn{padding:9px 12px;border-radius:9px;font-size:12px}
 
-.arcgis-map-wrap{margin-top:14px;width:100%;max-width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#eef3fb}
-.arcgis-map-wrap arcgis-embedded-map{display:block;width:100%!important;max-width:100%;height:520px!important}
-@media(max-width:760px){.arcgis-map-wrap arcgis-embedded-map{height:420px!important}}
+.fault-map-modal{min-width:0}
+.fault-line-map{height:560px;width:100%;border:1px solid var(--line);border-radius:12px;background:#dbe5f0;overflow:hidden;margin-top:10px}
+.fault-map-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:#475468;font-weight:800}
+.fault-map-toolbar span{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 9px;background:#f8fafd}
+.fault-swatch{width:16px;height:4px;border-radius:99px;display:inline-block;background:#64748b}
+.fault-swatch.qt{background:#d61f4c}.fault-swatch.preqt{background:#f59e0b}.fault-swatch.creep{background:#2563eb}
+.fault-map-status{margin-top:8px;font-size:11.5px;color:var(--muted);line-height:1.45}
+@media(max-width:760px){.fault-line-map{height:420px}}
 .detail-impact-grid{display:grid;gap:8px}
 .detail-impact{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#f8fafd}
 .detail-impact-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;text-transform:uppercase;letter-spacing:.45px;color:var(--muted);font-weight:800}
