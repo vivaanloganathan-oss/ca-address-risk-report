@@ -282,6 +282,16 @@ async function cgsFault(lat,lon){
     : {label:'Low Risk',score:2,desc:'No Alquist-Priolo fault zone within ~500 m of this point.',
        impacts:{property:IMP('Low','No mapped fault zone in the immediate vicinity.'),insurance:IMP('Moderate','Regional earthquake exposure still applies (statewide).')}};
 }
+async function cgsTsunami(lat, lon){
+  const fc = await loadTsunamiData().catch(()=>null);
+  if(!fc) return null;
+  const inside = geojsonContainsPoint(fc, lon, lat);
+  return inside
+    ? {label:'High Risk',score:8,desc:'Inside the CGS Tsunami Hazard Area for Emergency Planning screening layer at this point.',
+       impacts:{health:IMP('High','Mapped tsunami hazard areas are life-safety evacuation zones during rare coastal events.'),property:IMP('Moderate','Coastal inundation planning context should be reviewed during due diligence.'),insurance:IMP('Moderate','Flood / coastal hazard coverage may need closer review.')}}
+    : {label:'Low Risk',score:1,desc:'Outside the CGS Tsunami Hazard Area for Emergency Planning screening layer at this point.',
+       impacts:{health:IMP('Low','No mapped tsunami evacuation exposure at this point.'),property:IMP('Low','Not in the local CGS tsunami hazard screening area.'),insurance:IMP('Low','No mapped tsunami hazard context for this point.')}};
+}
 async function calfireFHSZ(lat,lon){
   const f=await esriQuery('https://services.gis.ca.gov/arcgis/rest/services/Environment/Fire_Severity_Zones/MapServer/0',
                           q=>q.intersects(L.latLng(lat,lon)));
@@ -516,7 +526,9 @@ function renderSummaryTable(st, liveResults){
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
     const mapAction = f.n === 5
       ? `<button class="rk-link map-open map-embed-open" type="button" data-fault-map="5">Open map</button>`
-      : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
+      : f.n === 46
+        ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
+        : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -748,6 +760,41 @@ function normalizeFaultFeatures(data){
   return [];
 }
 
+let tsunamiDataPromise = null;
+function loadTsunamiData(){
+  if(!tsunamiDataPromise){
+    tsunamiDataPromise = fetch('data/tsunami/CA_Tsunami_Hazard_Area_screening.geojson')
+      .then(r => { if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+  }
+  return tsunamiDataPromise;
+}
+
+function pointInRing(lon, lat, ring){
+  let inside = false;
+  for(let i=0, j=ring.length-1; i<ring.length; j=i++){
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    const hit = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / ((yj - yi) || 1e-12) + xi);
+    if(hit) inside = !inside;
+  }
+  return inside;
+}
+
+function geometryContainsPoint(geometry, lon, lat){
+  if(!geometry) return false;
+  if(geometry.type === 'Polygon'){
+    return (geometry.coordinates || []).some(ring => pointInRing(lon, lat, ring));
+  }
+  if(geometry.type === 'MultiPolygon'){
+    return (geometry.coordinates || []).some(poly => poly.some(ring => pointInRing(lon, lat, ring)));
+  }
+  return false;
+}
+
+function geojsonContainsPoint(fc, lon, lat){
+  return normalizeFaultFeatures(fc).some(feature => geometryContainsPoint(feature.geometry, lon, lat));
+}
+
 function faultPopup(props, layerName){
   const p = props || {};
   const name = p.FAULTNAME || p.FAULT_NAME || p.NAME || p.FAULT || p.FLTLABEL || p.Label || layerName;
@@ -760,6 +807,7 @@ function initFaultMap(){
   const el = $('#faultLineMap');
   if(!el || !STATE) return;
   if(faultMap){ try{ faultMap.remove(); }catch(e){} faultMap = null; }
+  if(tsunamiMap){ try{ tsunamiMap.remove(); }catch(e){} tsunamiMap = null; }
   faultMap = L.map(el, {scrollWheelZoom:true}).setView([STATE.lat, STATE.lon], 11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap · CGS FAM 750k'}).addTo(faultMap);
   L.marker([STATE.lat, STATE.lon]).addTo(faultMap).bindPopup(STATE.display || 'Analyzed address').openPopup();
@@ -783,6 +831,50 @@ function initFaultMap(){
   }).catch(err => {
     if(status) status.textContent = `Fault map could not load: ${err.message || err}`;
   });
+}
+
+
+let tsunamiMap = null;
+function initTsunamiMap(){
+  const el = $('#tsunamiMap');
+  if(!el || !STATE) return;
+  if(tsunamiMap){ try{ tsunamiMap.remove(); }catch(e){} tsunamiMap = null; }
+  tsunamiMap = L.map(el, {scrollWheelZoom:true}).setView([STATE.lat, STATE.lon], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap · CGS tsunami hazard area'}).addTo(tsunamiMap);
+  L.marker([STATE.lat, STATE.lon]).addTo(tsunamiMap).bindPopup(STATE.display || 'Analyzed address').openPopup();
+  L.control.scale({imperial:true}).addTo(tsunamiMap);
+  const status = $('#tsunamiMapStatus');
+  if(status) status.textContent = 'Loading CGS tsunami hazard area...';
+  loadTsunamiData().then(fc => {
+    L.geoJSON(fc, {
+      style: {color:'#0ea5e9', weight:1.5, opacity:.85, fillColor:'#38bdf8', fillOpacity:.22}
+    }).addTo(tsunamiMap);
+    const inside = geojsonContainsPoint(fc, STATE.lon, STATE.lat);
+    if(status) status.textContent = inside
+      ? 'This address is inside the local CGS tsunami hazard screening layer. Verify with the official CGS evacuation map.'
+      : 'This address is outside the local CGS tsunami hazard screening layer. Verify with the official CGS evacuation map.';
+    setTimeout(()=>tsunamiMap.invalidateSize(), 80);
+  }).catch(err => {
+    if(status) status.textContent = `Tsunami map could not load: ${err.message || err}`;
+  });
+}
+
+function openTsunamiMapModal(){
+  if(!STATE) return;
+  $('#xmodalTitle').textContent = 'Tsunami Evacuation Zone Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">CGS tsunami hazard area</div>
+      <div class="detail-desc">Local CGS Tsunami Hazard Area for Emergency Planning screening layer centered on ${esc(STATE.display || 'the analyzed address')}.</div>
+      <div id="tsunamiMap" class="fault-line-map"></div>
+      <div id="tsunamiMapStatus" class="fault-map-status">Preparing tsunami map...</div>
+      <div class="detail-desc">This local layer is simplified for screening speed. Use the official CGS evacuation map for final verification.</div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
+  $('#xmodal').classList.remove('hidden');
+  setTimeout(initTsunamiMap, 80);
 }
 
 function impactBlock(label, item){
@@ -894,12 +986,20 @@ function wireSummaryRows(){
       openFaultMapModal();
     });
   });
+  document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openTsunamiMapModal();
+    });
+  });
 }
 
 function closeFactorModal(){
   const modal = $('#xmodal');
   if(modal) modal.classList.add('hidden');
   if(faultMap){ try{ faultMap.remove(); }catch(e){} faultMap = null; }
+  if(tsunamiMap){ try{ tsunamiMap.remove(); }catch(e){} tsunamiMap = null; }
   SELECTED_FACTOR = null;
   document.querySelectorAll('#summaryTable tbody tr.selected').forEach(row=>{
     row.classList.remove('selected');
@@ -1378,13 +1478,14 @@ async function analyze(){
 
   // live lookups in parallel (hazards + livability)
   const safe = (p, label) => p.catch(e => { console.warn(`${label} lookup failed`, e); return null; });
-  const [census, flood, liq, lands, fault, fhsz, amen, env] = await Promise.all([
+  const [census, flood, liq, lands, fault, fhsz, tsunami, amen, env] = await Promise.all([
     safe(withTimeout(censusByZip(st.zip), 9000, 'Census'), 'Census'),
     safe(withTimeout(femaFloodZone(st.lat, st.lon), 9000, 'FEMA flood'), 'FEMA flood'),
     safe(withTimeout(cgsLiquefaction(st.lat, st.lon), 9000, 'CGS liquefaction'), 'CGS liquefaction'),
     safe(withTimeout(cgsLandslide(st.lat, st.lon), 9000, 'CGS landslide'), 'CGS landslide'),
     safe(withTimeout(cgsFault(st.lat, st.lon), 15000, 'CGS fault'), 'CGS fault'),
     safe(withTimeout(calfireFHSZ(st.lat, st.lon), 9000, 'CAL FIRE'), 'CAL FIRE'),
+    safe(withTimeout(cgsTsunami(st.lat, st.lon), 9000, 'CGS tsunami'), 'CGS tsunami'),
     safe(withTimeout(overpassAmenities(st), 32000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
     safe(withTimeout(localEnvironment(st.lat, st.lon), 6500, 'Environment'), 'Environment')
   ]);
@@ -1396,6 +1497,7 @@ async function analyze(){
   if(lands){ liveResults[7]=lands; }
   if(fault){ liveResults[5]=fault; }
   if(fhsz){ liveResults[11]=fhsz; }
+  if(tsunami){ liveResults[46]=tsunami; }
   Object.assign(liveResults, livabilityResults(amen, census));
   if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`}; }
 
