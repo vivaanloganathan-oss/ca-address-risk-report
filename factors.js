@@ -324,7 +324,14 @@ const FACTORS = [
   detail:"Mapped construction activity near the address (live OpenStreetMap proxy) — growth signal, but also change/noise; check the city planning page for entitled projects.",
   impact:{health:{level:'NA',why:"No direct health effect."},
           property:{level:'Low',why:"Development can lift or pressure values depending on type."},
-          insurance:{level:'NA',why:"Not an insurance factor."}}}
+          insurance:{level:'NA',why:"Not an insurance factor."}}},
+
+ {n:46, cat:"Tsunami", name:"Tsunami Evacuation Zone",
+  map:"https://maps.conservation.ca.gov/cgs/informationwarehouse/index.html?map=ts_evacuation&location={LAT},{LON},14", recenter:'coords', live:null, basemap:'topo',
+  detail:"California Geological Survey tsunami evacuation map for coastal inundation planning; opens zoomed to the searched address.",
+  impact:{health:{level:'High',why:"Tsunami zones indicate life-safety evacuation exposure during rare coastal events."},
+          property:{level:'Moderate',why:"Mapped coastal evacuation context can affect due diligence and buyer perception."},
+          insurance:{level:'Low',why:"Tsunami exposure is generally reviewed through flood / coastal hazard coverage context."}}}
 ];
 
 if (typeof module !== 'undefined') module.exports = { FACTORS };
