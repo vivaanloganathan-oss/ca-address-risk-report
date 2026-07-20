@@ -516,12 +516,23 @@ function renderSummaryTable(st, liveResults){
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
-    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
+    const row = `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
       <td class="num">${f.n}</td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${links}</td>
+    </tr>`;
+    if(f.n !== 5) return row;
+    return `${row}<tr class="fault-embed-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
+      <td></td>
+      <td colspan="6">
+        <div class="fault-embed-card">
+          <div class="fault-embed-title">Fault line map centered on this address</div>
+          <div class="fault-embed-sub">Use this embedded ArcGIS map to inspect nearby mapped fault traces and related layers.</div>
+          ${faultLineEmbed(st)}
+        </div>
+      </td>
     </tr>`;
   }).join('');
   $('#summaryTable').innerHTML =
@@ -609,7 +620,7 @@ function faultLineEmbed(st){
       basemap-gallery-enabled
       time-zone-label-enabled
       center="${lon},${lat}"
-      scale="18489297.737236"
+      scale="36111.909643"
       portal-url="https://www.arcgis.com">
     </arcgis-embedded-map>
   </div>`;
