@@ -270,12 +270,15 @@ async function cgsLandslide(lat,lon){
        impacts:{property:IMP('Low','Not in a mapped landslide zone.')}};
 }
 async function cgsFault(lat,lon){
+  const local = await localFaultRisk(lat, lon).catch(()=>null);
+  if(local) return local;
+
   const f=await esriQuery('https://gis.conservation.ca.gov/server/rest/services/CGS_Earthquake_Hazard_Zones/SHP_Fault_Zones/FeatureServer/0',
                           q=>q.nearby(L.latLng(lat,lon), 500));
   if(f===null) return null;
   return f.length
     ? {label:'High Risk',score:8,desc:'Within ~500 m of an Alquist-Priolo earthquake fault zone.',
-       impacts:{property:IMP('High','Fault-zone proximity \u2014 disclosure required, surface-rupture exposure.'),insurance:IMP('High','Earthquake coverage priced for near-fault exposure.')}}
+       impacts:{property:IMP('High','Fault-zone proximity - disclosure required, surface-rupture exposure.'),insurance:IMP('High','Earthquake coverage priced for near-fault exposure.')}}
     : {label:'Low Risk',score:2,desc:'No Alquist-Priolo fault zone within ~500 m of this point.',
        impacts:{property:IMP('Low','No mapped fault zone in the immediate vicinity.'),insurance:IMP('Moderate','Regional earthquake exposure still applies (statewide).')}};
 }
@@ -638,6 +641,84 @@ function featureNearAddress(feature, st){
     if(Math.abs(x - lon) <= lonDelta && Math.abs(y - lat) <= latDelta) near = true;
   });
   return near;
+}
+
+function pointToSegmentMiles(px, py, ax, ay, bx, by){
+  const lat0 = py * Math.PI / 180;
+  const xScale = 69.172 * Math.cos(lat0);
+  const yScale = 69.0;
+  const x = 0;
+  const y = 0;
+  const x1 = (ax - px) * xScale;
+  const y1 = (ay - py) * yScale;
+  const x2 = (bx - px) * xScale;
+  const y2 = (by - py) * yScale;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len2 = dx*dx + dy*dy;
+  const t = len2 ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / len2)) : 0;
+  const cx = x1 + t * dx;
+  const cy = y1 + t * dy;
+  return Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+}
+
+function geometryDistanceMiles(geometry, lon, lat){
+  let best = Infinity;
+  const scanLine = coords => {
+    if(!Array.isArray(coords) || coords.length < 2) return;
+    for(let i=1; i<coords.length; i++){
+      const a = coords[i-1];
+      const b = coords[i];
+      if(Array.isArray(a) && Array.isArray(b) && typeof a[0] === 'number' && typeof b[0] === 'number'){
+        best = Math.min(best, pointToSegmentMiles(lon, lat, a[0], a[1], b[0], b[1]));
+      }
+    }
+  };
+  const walk = coords => {
+    if(!Array.isArray(coords)) return;
+    if(Array.isArray(coords[0]) && typeof coords[0][0] === 'number') scanLine(coords);
+    else coords.forEach(walk);
+  };
+  walk(geometry && geometry.coordinates);
+  return best;
+}
+
+function faultRiskFromDistance(nearest){
+  if(!nearest || !Number.isFinite(nearest.distanceMiles)) return null;
+  const miles = nearest.distanceMiles;
+  const name = nearest.name || nearest.layerName || 'mapped CGS fault';
+  const dist = miles < 0.1 ? 'within 0.1 miles' : `${miles.toFixed(miles < 10 ? 1 : 0)} miles`;
+  const desc = `Nearest CGS FAM 750k fault feature is ${dist} away (${name}).`;
+  if(miles <= 5) return {label:'High Risk',score:8,desc,
+    impacts:{property:IMP('High','Mapped fault within 5 miles - elevated seismic disclosure and structural due-diligence context.'),insurance:IMP('High','Near-fault earthquake exposure can affect coverage cost and underwriting.')}};
+  if(miles <= 10) return {label:'Moderate Risk',score:6,desc,
+    impacts:{property:IMP('Moderate','Mapped fault within 10 miles - seismic context should be reviewed.'),insurance:IMP('Moderate','Earthquake coverage may reflect regional fault proximity.')}};
+  if(miles <= 15) return {label:'Low Risk',score:3,desc,
+    impacts:{property:IMP('Low','Mapped fault within 15 miles, but not immediate proximity.'),insurance:IMP('Moderate','California regional earthquake exposure still applies.')}};
+  return {label:'Low Risk',score:2,desc:`No CGS FAM 750k fault feature found within 15 miles. Nearest checked feature is ${dist} away (${name}).`,
+    impacts:{property:IMP('Low','No mapped regional fault in the 15-mile check radius.'),insurance:IMP('Moderate','California regional earthquake exposure still applies.')}};
+}
+
+async function localFaultRisk(lat, lon){
+  if(typeof shp !== 'function') return null;
+  const st = {lat, lon};
+  const results = await loadFaultData();
+  let nearest = null;
+  results.forEach(({layer, data}) => {
+    normalizeFaultFeatures(data).filter(f => featureNearAddress(f, st)).forEach(feature => {
+      const d = geometryDistanceMiles(feature.geometry, lon, lat);
+      if(!Number.isFinite(d)) return;
+      if(!nearest || d < nearest.distanceMiles){
+        const p = feature.properties || {};
+        nearest = {
+          distanceMiles: d,
+          layerName: layer.name,
+          name: p.FAULTNAME || p.FAULT_NAME || p.NAME || p.FAULT || p.FLTLABEL || p.Label || layer.name
+        };
+      }
+    });
+  });
+  return faultRiskFromDistance(nearest);
 }
 
 function normalizeFaultFeatures(data){
@@ -1284,7 +1365,7 @@ async function analyze(){
     safe(withTimeout(femaFloodZone(st.lat, st.lon), 9000, 'FEMA flood'), 'FEMA flood'),
     safe(withTimeout(cgsLiquefaction(st.lat, st.lon), 9000, 'CGS liquefaction'), 'CGS liquefaction'),
     safe(withTimeout(cgsLandslide(st.lat, st.lon), 9000, 'CGS landslide'), 'CGS landslide'),
-    safe(withTimeout(cgsFault(st.lat, st.lon), 9000, 'CGS fault'), 'CGS fault'),
+    safe(withTimeout(cgsFault(st.lat, st.lon), 15000, 'CGS fault'), 'CGS fault'),
     safe(withTimeout(calfireFHSZ(st.lat, st.lon), 9000, 'CAL FIRE'), 'CAL FIRE'),
     safe(withTimeout(overpassAmenities(st), 32000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
     safe(withTimeout(localEnvironment(st.lat, st.lon), 6500, 'Environment'), 'Environment')
