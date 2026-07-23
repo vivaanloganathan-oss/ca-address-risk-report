@@ -450,11 +450,11 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .crime-safety-marker span{display:grid;place-items:center;width:28px;height:28px;border-radius:999px;color:#fff;font-weight:900;font-size:13px;border:3px solid #fff;box-shadow:0 4px 12px rgba(15,23,42,.25)}
 .crime-dot{display:inline-block;width:14px;height:14px;border-radius:999px;margin-right:7px;vertical-align:-1px}
 .crime-dot.police{background:#2563eb}.crime-dot.fire{background:#dc2626}.crime-dot.hospital{background:#16a34a}.crime-dot.ambulance{background:#7c3aed}
-.crime-legend-row{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 12px}
-.crime-legend-row span{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#f8fbff;color:var(--muted);font-weight:800}
 
 .arcgis-factor-map{display:block;min-height:420px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#eef3f8}
 @media(max-width:760px){.arcgis-factor-map{height:520px!important}}
 
 .crime-address-box{display:flex;flex-direction:column;gap:4px;padding:12px 14px;margin:12px 0;border:1px solid var(--line);border-radius:12px;background:#f8fbff;color:var(--ink);font-weight:800}
 .crime-address-box small{color:var(--muted);font-weight:700}
+.crime-report-frame{display:block;width:100%;height:620px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}
+@media(max-width:760px){.crime-report-frame{height:560px}}

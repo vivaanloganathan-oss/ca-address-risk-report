@@ -783,10 +783,15 @@ let SUMMARY_ITEMS = {};
 let SELECTED_FACTOR = null;
 
 function crimeMappingUrl(st){
-  if(!st || !st.display) return 'https://www.crimemapping.com/map';
+  if(!st) return 'https://www.crimemapping.com/map';
   const params = new URLSearchParams();
-  params.set('search', st.display);
-  params.set('address', st.display);
+  params.set('address', st.display || '');
+  if(Number.isFinite(+st.lat)) params.set('lat', Number(st.lat).toFixed(6));
+  if(Number.isFinite(+st.lon)){
+    params.set('lng', Number(st.lon).toFixed(6));
+    params.set('lon', Number(st.lon).toFixed(6));
+  }
+  params.set('zoom', '15');
   return `https://www.crimemapping.com/map?${params.toString()}`;
 }
 
@@ -1244,12 +1249,10 @@ function initCrimeMap(){
   const el = $('#crimeSafetyMap');
   if(!el || !STATE) return;
   if(crimeMap){ try{ crimeMap.remove(); }catch(e){} crimeMap = null; }
-  const lat = Number(STATE.lat);
-  const lon = Number(STATE.lon);
-  crimeMap = L.map(el, {scrollWheelZoom:true}).setView([lat, lon], 16);
+  crimeMap = L.map(el, {scrollWheelZoom:true}).setView([STATE.lat, STATE.lon], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap · CrimeMapping link'}).addTo(crimeMap);
-  L.marker([lat, lon]).addTo(crimeMap).bindPopup(STATE.display || 'Analyzed address').openPopup();
-  L.circle([lat, lon], {radius:1609, color:'#2563eb', weight:2, opacity:.65, fillColor:'#3b82f6', fillOpacity:.08}).addTo(crimeMap);
+  L.marker([STATE.lat, STATE.lon]).addTo(crimeMap).bindPopup(STATE.display || 'Analyzed address').openPopup();
+  L.circle([STATE.lat, STATE.lon], {radius:4828, color:'#2563eb', weight:2, opacity:.65, fillColor:'#3b82f6', fillOpacity:.08}).addTo(crimeMap);
   L.control.scale({imperial:true}).addTo(crimeMap);
   const status = $('#crimeMapStatus');
   if(status) status.textContent = 'Loading nearby public-safety facilities...';
@@ -1280,29 +1283,21 @@ function openCrimeMapModal(){
   $('#xmodalTitle').textContent = 'Crime & Public Safety Map';
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
-      <div class="detail-section-title">Exact address safety map</div>
-      <div class="detail-desc">This map is zoomed to the analyzed address and shows nearby public-safety facilities when OpenStreetMap returns them. Use CrimeMapping for official participating-agency incident reports.</div>
+      <div class="detail-section-title">CrimeMapping reported incident map</div>
+      <div class="detail-desc">The map below opens CrimeMapping directly for ${esc(addr)}. If CrimeMapping does not auto-center in your browser, use the button below and search this exact address.</div>
       <div class="crime-address-box">
         <span>${esc(addr)}</span>
-        <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)} · exact address zoom</small>
+        <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)} · requested zoom 15</small>
       </div>
-      <div class="crime-legend-row" aria-label="Public safety marker legend">
-        <span><i class="crime-dot police"></i>Police</span>
-        <span><i class="crime-dot fire"></i>Fire</span>
-        <span><i class="crime-dot hospital"></i>Hospital</span>
-        <span><i class="crime-dot ambulance"></i>Ambulance</span>
-      </div>
-      <div id="crimeSafetyMap" class="fault-line-map"></div>
-      <div id="crimeMapStatus" class="fault-map-status">Preparing exact address map...</div>
+      <iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       <div class="detail-actions">
-        <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open CrimeMapping incident map ↗</a>
+        <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open CrimeMapping for this address ↗</a>
       </div>
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'CrimeMapping may require searching the address on its site because it does not reliably support public address deep links.';
+  if(foot) foot.textContent = 'CrimeMapping coverage depends on participating law-enforcement agencies. Informational screening only.';
   $('#xmodal').classList.remove('hidden');
-  setTimeout(initCrimeMap, 80);
 }
 
 function impactBlock(label, item){
