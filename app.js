@@ -806,11 +806,13 @@ function renderSummaryTable(st, liveResults){
       ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
       : f.n === 5
         ? `<button class="rk-link map-open map-embed-open" type="button" data-fault-map="5">Open map</button>`
-        : f.n === 15
-          ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
-          : f.n === 46
-            ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
-            : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
+        : f.n === 6
+          ? `<button class="rk-link map-open liquefaction-map-open" type="button" data-liquefaction-map="6">Open map</button>`
+          : f.n === 15
+            ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
+            : f.n === 46
+              ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
+              : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -1292,6 +1294,26 @@ function impactBlock(label, item){
   </div>`;
 }
 
+
+function openLiquefactionMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  $('#xmodalTitle').textContent = 'Soil Liquefaction Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">CGS soil liquefaction map</div>
+      <div class="detail-desc">ArcGIS liquefaction map centered on ${esc(STATE.display || 'the analyzed address')}.</div>
+      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="3477be9df9724d69a190546a51db168c" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/cgs/informationwarehouse/eqzapp/" target="_blank" rel="noopener">Open official CGS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'CGS liquefaction map. Informational screening only; verify with official CGS sources.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openFaultMapModal(){
   if(!STATE) return;
   $('#xmodalTitle').textContent = 'Earthquake Fault Lines Map';
@@ -1399,6 +1421,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openFaultMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .liquefaction-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openLiquefactionMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .npl-map-open').forEach(btn=>{
