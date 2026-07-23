@@ -17,8 +17,8 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance-pricing factor."}}},
 
  {n:2, cat:"Schools", name:"School Zones & Ratings",
-  map:"https://www.greatschools.org/school-district-boundaries-map/?lat={LAT}&lon={LON}", recenter:'coords', live:null, basemap:'street', alt:"https://www.google.com/maps/search/?api=1&query=schools%20near%20{ADDR}",
-  detail:"Assigned public elementary/middle/high schools and their GreatSchools ratings.",
+  map:"https://www.greatschools.org/school-district-boundaries-map/?lat={LAT}&lon={LON}", recenter:'coords', live:'osm', basemap:'street', alt:"https://www.google.com/maps/search/?api=1&query=schools%20near%20{ADDR}",
+  detail:"Live OpenStreetMap school-access check near the address; use GreatSchools or the district for assigned-school ratings.",
   impact:{health:{level:'NA',why:"No direct health effect."},
           property:{level:'Moderate',why:"School quality is a strong driver of home values."},
           insurance:{level:'NA',why:"Not used in insurance pricing."}}},

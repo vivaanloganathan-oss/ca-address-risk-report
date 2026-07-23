@@ -451,6 +451,77 @@ async function overpassAmenities(st){
   return amenityTotal(direct) > 0 ? direct : null;
 }
 
+function schoolAccessQuery(lat, lon){
+  return `[out:json][timeout:20];(
+    nwr(around:3219,${lat},${lon})[amenity=school];
+    nwr(around:3219,${lat},${lon})[amenity=kindergarten];
+  );out center tags qt 300;`;
+}
+
+function schoolElementPoint(e){
+  if(typeof e.lat === 'number' && typeof e.lon === 'number') return {lat:e.lat, lon:e.lon};
+  if(e.center && typeof e.center.lat === 'number' && typeof e.center.lon === 'number') return {lat:e.center.lat, lon:e.center.lon};
+  return null;
+}
+
+function distanceMiles(aLat, aLon, bLat, bLon){
+  const R = 3958.8;
+  const dLat = (bLat-aLat) * Math.PI / 180;
+  const dLon = (bLon-aLon) * Math.PI / 180;
+  const lat1 = aLat * Math.PI / 180;
+  const lat2 = bLat * Math.PI / 180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function schoolAccessResult(st, elements){
+  const seen = new Set();
+  const schools = [];
+  (elements || []).forEach(e => {
+    const p = schoolElementPoint(e);
+    if(!p) return;
+    const tags = e.tags || {};
+    const name = tags.name || tags.operator || 'Mapped school';
+    const key = `${e.type || 'n'}-${e.id || name}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    schools.push({name, dist: distanceMiles(st.lat, st.lon, p.lat, p.lon)});
+  });
+  schools.sort((a,b)=>a.dist-b.dist);
+  const count = schools.length;
+  const nearest = schools[0] || null;
+  const distText = nearest ? `${nearest.dist.toFixed(nearest.dist < 1 ? 2 : 1)} miles` : 'not found within 2 miles';
+  const nameText = nearest ? `; nearest: ${nearest.name} (${distText})` : '';
+  const desc = `Live OpenStreetMap school-access check: ${count} mapped school site(s) within 2 miles${nameText}. This is an access proxy, not an official school-quality rating.`;
+  if(count >= 3 || (nearest && nearest.dist <= 0.75)){
+    return {label:'Low Risk',score:2,desc,
+      impacts:{health:IMP('NA','No direct health effect.'),property:IMP('Low','Multiple nearby mapped schools support location convenience; verify assigned schools and ratings separately.'),insurance:IMP('NA','Not used in insurance pricing.')}};
+  }
+  if(count >= 1 || (nearest && nearest.dist <= 2)){
+    return {label:'Moderate Risk',score:5,desc,
+      impacts:{health:IMP('NA','No direct health effect.'),property:IMP('Moderate','Some school access is nearby, but school assignment and ratings still need review.'),insurance:IMP('NA','Not used in insurance pricing.')}};
+  }
+  return {label:'High Risk',score:8,desc,
+    impacts:{health:IMP('NA','No direct health effect.'),property:IMP('High','No mapped schools found within 2 miles in the live access check; verify with district boundaries and school-rating sources.'),insurance:IMP('NA','Not used in insurance pricing.')}};
+}
+
+async function schoolAccess(st){
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter'
+  ];
+  const body = new URLSearchParams({data:schoolAccessQuery(st.lat, st.lon)});
+  for(const endpoint of endpoints){
+    try{
+      const res = await fetchWithAbort(endpoint, {method:'POST', body}, 14000);
+      if(!res.ok) continue;
+      const j = await res.json();
+      return schoolAccessResult(st, j.elements || []);
+    }catch(e){}
+  }
+  return null;
+}
+
 async function localEnvironment(lat, lon){
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
     + `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code`
@@ -1587,8 +1658,9 @@ async function analyze(){
 
   // live lookups in parallel (hazards + livability)
   const safe = (p, label) => p.catch(e => { console.warn(`${label} lookup failed`, e); return null; });
-  const [census, flood, liq, lands, fault, fhsz, npl, tsunami, amen, env] = await Promise.all([
+  const [census, school, flood, liq, lands, fault, fhsz, npl, tsunami, amen, env] = await Promise.all([
     safe(withTimeout(censusByZip(st.zip), 9000, 'Census'), 'Census'),
+    safe(withTimeout(schoolAccess(st), 18000, 'School access'), 'School access'),
     safe(withTimeout(femaFloodZone(st.lat, st.lon), 9000, 'FEMA flood'), 'FEMA flood'),
     safe(withTimeout(cgsLiquefaction(st.lat, st.lon), 9000, 'CGS liquefaction'), 'CGS liquefaction'),
     safe(withTimeout(cgsLandslide(st.lat, st.lon), 9000, 'CGS landslide'), 'CGS landslide'),
@@ -1602,6 +1674,7 @@ async function analyze(){
   if(runId !== ANALYZE_RUN) return;
   setPageLoading(true, 'Rendering the final report...');
   renderProfile(census, st);
+  if(school){ liveResults[2]=school; }
   if(flood){ liveResults[8]=flood; }
   if(liq){ liveResults[6]=liq; }
   if(lands){ liveResults[7]=lands; }
