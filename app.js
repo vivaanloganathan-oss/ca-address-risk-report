@@ -202,18 +202,74 @@ async function censusByZip(zip){
   if(!zip) return null;
   const cfg=window.APP_CONFIG||{};
   if(!cfg.CENSUS_KEY) return null;            // no key -> graceful fallback (link only)
-  const vars='NAME,DP05_0001E,DP03_0062E,DP04_0089E,DP02_0068PE';
   const yr=cfg.ACS_YEAR||'2023';
-  const url=`https://api.census.gov/data/${yr}/acs/acs5/profile?get=${vars}&for=zip%20code%20tabulation%20area:${zip}&key=${cfg.CENSUS_KEY}`;
-  try{
+  const profileVars='NAME,DP05_0001E,DP03_0062E,DP04_0089E,DP02_0068PE';
+  const detailVars = [
+    'B15003_001E','B15003_002E','B15003_003E','B15003_004E','B15003_005E','B15003_006E','B15003_007E','B15003_008E','B15003_009E','B15003_010E','B15003_011E','B15003_012E','B15003_013E','B15003_014E','B15003_015E','B15003_016E','B15003_017E','B15003_018E','B15003_019E','B15003_020E','B15003_021E','B15003_022E','B15003_023E','B15003_024E','B15003_025E',
+    'B01001_001E','B01001_002E','B01001_003E','B01001_004E','B01001_005E','B01001_006E','B01001_007E','B01001_008E','B01001_009E','B01001_010E','B01001_011E','B01001_012E','B01001_013E','B01001_014E','B01001_015E','B01001_016E','B01001_017E','B01001_018E','B01001_019E','B01001_020E','B01001_021E','B01001_022E','B01001_023E','B01001_024E','B01001_025E','B01001_026E','B01001_027E','B01001_028E','B01001_029E','B01001_030E','B01001_031E','B01001_032E','B01001_033E','B01001_034E','B01001_035E','B01001_036E','B01001_037E','B01001_038E','B01001_039E','B01001_040E','B01001_041E','B01001_042E','B01001_043E','B01001_044E','B01001_045E','B01001_046E','B01001_047E','B01001_048E','B01001_049E',
+    'B03002_001E','B03002_003E','B03002_004E','B03002_005E','B03002_006E','B03002_007E','B03002_008E','B03002_009E','B03002_012E'
+  ];
+  const fetchTable = async (dataset, vars) => {
+    const url=`https://api.census.gov/data/${yr}/${dataset}?get=${vars}&for=zip%20code%20tabulation%20area:${zip}&key=${cfg.CENSUS_KEY}`;
     const res=await fetch(url); if(!res.ok) return null;
     const j=await res.json(); if(!j||j.length<2) return null;
     const [h,row]=j; const o={}; h.forEach((k,i)=>o[k]=row[i]);
+    return o;
+  };
+  const n = (o,k) => Number(o && o[k]) || 0;
+  const pct = (num, den) => den > 0 ? Math.round((num / den) * 100) : null;
+  try{
+    const detailChunks = [];
+    for(let i=0; i<detailVars.length; i+=45) detailChunks.push(detailVars.slice(i, i+45).join(','));
+    const [p, ...detailRows] = await Promise.all([
+      fetchTable('acs/acs5/profile', profileVars),
+      ...detailChunks.map(vars => fetchTable('acs/acs5', vars))
+    ]);
+    const d = Object.assign({}, ...detailRows.filter(Boolean));
+    if(!p) return null;
+    const eduTotal = n(d,'B15003_001E');
+    const lessHs = pct(['B15003_002E','B15003_003E','B15003_004E','B15003_005E','B15003_006E','B15003_007E','B15003_008E','B15003_009E','B15003_010E','B15003_011E','B15003_012E','B15003_013E','B15003_014E','B15003_015E','B15003_016E'].reduce((s,k)=>s+n(d,k),0), eduTotal);
+    const highSchool = pct(n(d,'B15003_017E') + n(d,'B15003_018E'), eduTotal);
+    const someCollege = pct(n(d,'B15003_019E') + n(d,'B15003_020E') + n(d,'B15003_021E'), eduTotal);
+    const bachelor = pct(n(d,'B15003_022E'), eduTotal);
+    const masters = pct(n(d,'B15003_023E') + n(d,'B15003_024E') + n(d,'B15003_025E'), eduTotal);
+    const ageTotal = n(d,'B01001_001E');
+    const sum = keys => keys.reduce((acc,k)=>acc+n(d,k),0);
+    const ages = [
+      ['<10 years', pct(sum(['B01001_003E','B01001_004E','B01001_027E','B01001_028E']), ageTotal)],
+      ['10-17 years', pct(sum(['B01001_005E','B01001_006E','B01001_029E','B01001_030E']), ageTotal)],
+      ['18-24 years', pct(sum(['B01001_007E','B01001_008E','B01001_009E','B01001_010E','B01001_031E','B01001_032E','B01001_033E','B01001_034E']), ageTotal)],
+      ['25-34 years', pct(sum(['B01001_011E','B01001_012E','B01001_035E','B01001_036E']), ageTotal)],
+      ['35-44 years', pct(sum(['B01001_013E','B01001_014E','B01001_037E','B01001_038E']), ageTotal)],
+      ['45-54 years', pct(sum(['B01001_015E','B01001_016E','B01001_039E','B01001_040E']), ageTotal)],
+      ['55-64 years', pct(sum(['B01001_017E','B01001_018E','B01001_019E','B01001_041E','B01001_042E','B01001_043E']), ageTotal)],
+      ['65+ years', pct(sum(['B01001_020E','B01001_021E','B01001_022E','B01001_023E','B01001_024E','B01001_025E','B01001_044E','B01001_045E','B01001_046E','B01001_047E','B01001_048E','B01001_049E']), ageTotal)]
+    ];
+    const raceTotal = n(d,'B03002_001E');
+    const races = [
+      ['White', pct(n(d,'B03002_003E'), raceTotal)],
+      ['Asian', pct(n(d,'B03002_006E'), raceTotal)],
+      ['Hispanic', pct(n(d,'B03002_012E'), raceTotal)],
+      ['Black', pct(n(d,'B03002_004E'), raceTotal)],
+      ['Two or more races', pct(n(d,'B03002_009E'), raceTotal)],
+      ['Other', pct(n(d,'B03002_005E') + n(d,'B03002_007E') + n(d,'B03002_008E'), raceTotal)]
+    ].filter(([,v]) => v !== null && v > 0);
+    const gender = [
+      ['Female', pct(n(d,'B01001_026E'), ageTotal)],
+      ['Male', pct(n(d,'B01001_002E'), ageTotal)]
+    ];
+    const bachelorsPlus = eduTotal ? (bachelor + masters) : (p.DP02_0068PE > 0 ? +p.DP02_0068PE : null);
     return {
-      pop:(+o.DP05_0001E).toLocaleString(),
-      income: o.DP03_0062E>0 ? '$'+(+o.DP03_0062E).toLocaleString() : 'n/a',
-      home: o.DP04_0089E>0 ? '$'+(+o.DP04_0089E).toLocaleString() : 'n/a',
-      bachelors: o.DP02_0068PE>0 ? o.DP02_0068PE+'%' : 'n/a'
+      pop:(+p.DP05_0001E).toLocaleString(),
+      income: p.DP03_0062E>0 ? '$'+(+p.DP03_0062E).toLocaleString() : 'n/a',
+      home: p.DP04_0089E>0 ? '$'+(+p.DP04_0089E).toLocaleString() : 'n/a',
+      bachelors: bachelorsPlus != null ? `${bachelorsPlus}%` : 'n/a',
+      demographics:{
+        education:[["Master's degree or higher", masters], ["Bachelor's degree", bachelor], ["Some college or associate's degree", someCollege], ['High school diploma or equivalent', highSchool], ['Less than high school diploma', lessHs]],
+        gender,
+        age:ages,
+        race:races
+      }
     };
   }catch(e){ return null; }
 }
@@ -587,14 +643,34 @@ function badge(label, score){
   return `<span class="bdg ${k==='pending'?'pending':''}" style="${k!=='pending'?`background:${RC[k]}`:''}">${txt}</span>`;
 }
 
+function demoBar([label, value]){
+  const v = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  const text = Number.isFinite(value) ? `${Math.round(value)}%` : 'n/a';
+  return `<div class="demo-bar"><div class="demo-fill" style="width:${v}%"></div><span>${label}</span><b>${text}</b></div>`;
+}
+
+function demoPanel(title, rows){
+  return `<div class="demo-panel"><h4>${title}</h4>${(rows||[]).map(demoBar).join('')}</div>`;
+}
+
 function renderProfile(c, st){
   if(c){
-    const items=[['Population (ZIP)',c.pop],['Median Household Income',c.income],['Median Home Value',c.home],["Bachelor's+ Degree",c.bachelors]];
-    $('#profile').innerHTML = items.map(([k,v])=>`<div class="prof"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    const d = c.demographics || {};
+    const summary=[['Population (ZIP)',c.pop],['Median Household Income',c.income],['Median Home Value',c.home],["Bachelor's+ Degree",c.bachelors]];
+    $('#profile').innerHTML = `<div class="demo-card">
+      <div class="demo-head"><div><span>ZIP ${st?.zip||''}</span><h3>Demographics</h3></div><p>U.S. Census ACS ${((window.APP_CONFIG||{}).ACS_YEAR||'2023')} ZIP/ZCTA data</p></div>
+      <div class="demo-summary">${summary.map(([k,v])=>`<div class="prof"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
+      <div class="demo-grid">
+        ${demoPanel('Education Levels', d.education)}
+        ${demoPanel('Gender', d.gender)}
+        ${demoPanel('Age', d.age)}
+        ${demoPanel('Racial Diversity', d.race)}
+      </div>
+    </div>`;
   } else if(st){
     const zlink=`https://www.zipdatamaps.com/${st.zip||''}`;
-    $('#profile').innerHTML = `<div class="prof" style="grid-column:1/-1"><div class="k">ZIP ${st.zip||''} demographics</div>`
-      +`<div class="v" style="font-weight:500;font-size:12px">Add a free <a href="https://api.census.gov/data/key_signup.html" target="_blank" rel="noopener">Census API key</a> in <code>config.js</code> to auto-load population, income &amp; home value — or <a href="${zlink}" target="_blank" rel="noopener">view the ZIP profile ↗</a>.</div></div>`;
+    $('#profile').innerHTML = `<div class="prof demo-empty"><div class="k">ZIP ${st.zip||''} demographics</div>`
+      +`<div class="v" style="font-weight:500;font-size:12px">Add a free <a href="https://api.census.gov/data/key_signup.html" target="_blank" rel="noopener">Census API key</a> in <code>config.js</code> to auto-load Census demographics — or <a href="${zlink}" target="_blank" rel="noopener">view the ZIP profile ↗</a>.</div></div>`;
   } else {
     $('#profile').innerHTML = `<div class="prof"><div class="k">Demographics</div><div class="v">Loading…</div></div>`;
   }
@@ -1644,7 +1720,6 @@ async function analyze(){
   $('#locAddr').textContent = st.display;
   $('#locCoords').textContent = `${(+st.lat).toFixed(5)}, ${(+st.lon).toFixed(5)}`;
   setStatus(`<span class="ok">✓</span> Showing results for ${st.display.split(',').slice(0,2).join(',')}`,'ok');
-  renderLegend();
   renderScoring();
   invalidateMapSoon();
 
