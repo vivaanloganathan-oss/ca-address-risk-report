@@ -782,6 +782,19 @@ function renderScoring(){
 let SUMMARY_ITEMS = {};
 let SELECTED_FACTOR = null;
 
+function crimeMappingUrl(st){
+  if(!st) return 'https://www.crimemapping.com/map';
+  const params = new URLSearchParams();
+  params.set('address', st.display || '');
+  if(Number.isFinite(+st.lat)) params.set('lat', Number(st.lat).toFixed(6));
+  if(Number.isFinite(+st.lon)){
+    params.set('lng', Number(st.lon).toFixed(6));
+    params.set('lon', Number(st.lon).toFixed(6));
+  }
+  params.set('zoom', '15');
+  return `https://www.crimemapping.com/map?${params.toString()}`;
+}
+
 function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
@@ -800,7 +813,7 @@ function renderSummaryTable(st, liveResults){
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
-    const mapUrl=fill(f.map, st);
+    const mapUrl = f.n === 3 ? crimeMappingUrl(st) : fill(f.map, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
     const mapAction = f.n === 3
       ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
@@ -1265,28 +1278,26 @@ function initCrimeMap(){
 
 function openCrimeMapModal(){
   if(!STATE) return;
+  const url = crimeMappingUrl(STATE);
+  const addr = STATE.display || 'the analyzed address';
   $('#xmodalTitle').textContent = 'Crime & Public Safety Map';
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
-      <div class="detail-section-title">CrimeMapping + local safety access</div>
-      <div class="detail-desc">CrimeMapping shows reported incidents where local agencies participate. The local map below is centered on ${esc(STATE.display || 'the analyzed address')} and shows nearby public-safety facilities from OpenStreetMap.</div>
-      <div class="fault-map-toolbar">
-        <span><i class="crime-dot police"></i> Police</span>
-        <span><i class="crime-dot fire"></i> Fire</span>
-        <span><i class="crime-dot hospital"></i> Hospital</span>
-        <span><i class="crime-dot ambulance"></i> Ambulance</span>
+      <div class="detail-section-title">CrimeMapping reported incident map</div>
+      <div class="detail-desc">The map below opens CrimeMapping directly for ${esc(addr)}. If CrimeMapping does not auto-center in your browser, use the button below and search this exact address.</div>
+      <div class="crime-address-box">
+        <span>${esc(addr)}</span>
+        <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)} · requested zoom 15</small>
       </div>
-      <div id="crimeSafetyMap" class="fault-line-map"></div>
-      <div id="crimeMapStatus" class="fault-map-status">Preparing safety map...</div>
+      <iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       <div class="detail-actions">
-        <a class="btn primary detail-map" href="https://www.crimemapping.com/map" target="_blank" rel="noopener">Open CrimeMapping ↗</a>
+        <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open CrimeMapping for this address ↗</a>
       </div>
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'CrimeMapping coverage depends on participating law-enforcement agencies. Informational screening only.';
   $('#xmodal').classList.remove('hidden');
-  setTimeout(initCrimeMap, 80);
 }
 
 function impactBlock(label, item){
