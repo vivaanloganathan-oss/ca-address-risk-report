@@ -783,15 +783,9 @@ let SUMMARY_ITEMS = {};
 let SELECTED_FACTOR = null;
 
 function crimeMappingUrl(st){
-  if(!st) return 'https://www.crimemapping.com/map';
+  if(!st || !st.display) return 'https://www.crimemapping.com/map';
   const params = new URLSearchParams();
-  params.set('address', st.display || '');
-  if(Number.isFinite(+st.lat)) params.set('lat', Number(st.lat).toFixed(6));
-  if(Number.isFinite(+st.lon)){
-    params.set('lng', Number(st.lon).toFixed(6));
-    params.set('lon', Number(st.lon).toFixed(6));
-  }
-  params.set('zoom', '15');
+  params.set('address', st.display);
   return `https://www.crimemapping.com/map?${params.toString()}`;
 }
 
@@ -816,7 +810,7 @@ function renderSummaryTable(st, liveResults){
     const mapUrl = f.n === 3 ? crimeMappingUrl(st) : fill(f.map, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
     const mapAction = f.n === 3
-      ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
+      ? `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`
       : f.n === 5
         ? `<button class="rk-link map-open map-embed-open" type="button" data-fault-map="5">Open map</button>`
         : f.n === 6
@@ -1439,13 +1433,6 @@ function wireSummaryRows(){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       openFactorModal(+btn.dataset.detail);
-    });
-  });
-  document.querySelectorAll('#summaryTable .crime-map-open').forEach(btn=>{
-    btn.addEventListener('click', e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      openCrimeMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .map-embed-open').forEach(btn=>{
