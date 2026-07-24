@@ -775,8 +775,8 @@ function renderScoring(){
     <span class="sw" style="background:${RC.low}"></span><b>1–4 = Low</b>,
     <span class="sw" style="background:${RC.mod}"></span><b>5–7 = Moderate</b>,
     <span class="sw" style="background:${RC.high}"></span><b>8–10 = High</b>.
-    Ratings use live public-agency data (FEMA flood, U.S. Census, and more) where an API exists; every other factor
-    shows its typical impact and a live agency map recentered on your address. Informational screening only.`;
+    Ratings use live public-agency/API/GIS results where available. Factors without a verified live score are left unscored
+    and should be checked through their map link. Informational screening only.`;
 }
 
 let SUMMARY_ITEMS = {};
@@ -1592,12 +1592,68 @@ function riskKey(label){ if(!label) return 'pending'; const l=label.toLowerCase(
   return l.includes('high')?'high':l.includes('moderate')?'mod':l.includes('low')?'low':'no'; }
 
 const LVLCLASS={'NA':'na','No':'no','Low':'low','Moderate':'mod','High':'high'};
-function lvlPill(level){ return `<span class="lvl lvl-${LVLCLASS[level]||'na'}">${level}</span>`; }
+function lvlPill(level){ return '<span class="lvl lvl-' + (LVLCLASS[level]||'na') + '">' + level + '</span>'; }
 
-// effective per-dimension impact, with live data (flood) overriding where known
+const IMPACT_DIMS = ['health','property','insurance'];
+function emptyImpact(f){
+  const hasLiveSource = !!(f.live || f.map);
+  const why = hasLiveSource
+    ? 'No verified live score was returned for this address. Open the map/source to assess this factor.'
+    : 'No address-specific score is available for this factor yet.';
+  return {
+    health: IMP('NA', why),
+    property: IMP('NA', why),
+    insurance: IMP('NA', why)
+  };
+}
+
+function scoreToImpactLevel(score){
+  const s = Number(score);
+  if(!Number.isFinite(s)) return 'NA';
+  if(s <= 0) return 'No';
+  if(s < 4.5) return 'Low';
+  if(s < 7.5) return 'Moderate';
+  return 'High';
+}
+
+function factorScoreWeights(f){
+  const n = Number(f.n);
+  if(n === 1) return {health:0, property:0, insurance:0};
+  if(n === 2) return {health:0, property:1, insurance:0};
+  if(n === 3) return {health:.75, property:.85, insurance:.55};
+  if([5,6,7,46].includes(n)) return {health:.15, property:1, insurance:.9};
+  if([8,9,10].includes(n)) return {health:.1, property:1, insurance:1};
+  if([11,12].includes(n)) return {health:.35, property:.85, insurance:1};
+  if([13,14,15,16,17,19,20,21,22,23,24,27,28,29].includes(n)) return {health:1, property:.75, insurance:.2};
+  if([30,31,32,33].includes(n)) return {health:.65, property:.65, insurance:.2};
+  if(n >= 37 && n <= 45) return {health:.45, property:.8, insurance:0};
+  return {health:.5, property:.5, insurance:.2};
+}
+
+function impactFromLiveScore(f, live){
+  const base = Number(live && live.score);
+  const weights = factorScoreWeights(f);
+  const source = live && live.desc ? live.desc.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : 'Live address-specific signal';
+  const im = {};
+  IMPACT_DIMS.forEach(k => {
+    const weight = weights[k] || 0;
+    if(!Number.isFinite(base) || weight <= 0){
+      im[k] = IMP('NA', k === 'insurance' ? 'Not a standard insurance-pricing signal from this live check.' : 'No direct address-specific impact from this live check.');
+      return;
+    }
+    const level = scoreToImpactLevel(base * weight);
+    im[k] = IMP(level, source + ' Scored by the ' + k.replace('property','property value') + ' weighting model.');
+  });
+  return im;
+}
+
+// Effective per-dimension impact. Live results win; static factor text is not used as an address-specific score.
 function effImpact(f, live){
-  const im={health:{...f.impact.health}, property:{...f.impact.property}, insurance:{...f.impact.insurance}};
-  if(live && live.impacts){ for(const k of ['health','property','insurance']){ if(live.impacts[k]) im[k]={...live.impacts[k]}; } }
+  const im = emptyImpact(f);
+  if(live && live.impacts){ for(const k of IMPACT_DIMS){ if(live.impacts[k]) im[k]={...live.impacts[k]}; } }
+  else if(live && Number.isFinite(Number(live.score))){
+    Object.assign(im, impactFromLiveScore(f, live));
+  }
   if(live && f.n===8){
     const hi=live.score>=8;
     im.property ={level:hi?'High':'Low', why:hi?'In a Special Flood Hazard Area — lowers value & resale.':'Minimal flood zone (Zone X) — little value impact.'};
@@ -1983,7 +2039,7 @@ async function analyze(){
   if(npl){ liveResults[15]=npl; }
   if(tsunami){ liveResults[46]=tsunami; }
   Object.assign(liveResults, livabilityResults(amen, census));
-  if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`}; }
+  if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`, impacts:{health:IMP('NA','Live Census demographic context, not a health hazard.'),property:IMP('No','Live Census socioeconomic context; not itself a risk.'),insurance:IMP('NA','Not an insurance-pricing factor.')}}; }
 
   // summary view (table) + overall risk score
   renderSummaryTable(st, liveResults);
