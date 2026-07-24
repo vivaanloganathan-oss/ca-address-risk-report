@@ -789,6 +789,27 @@ function crimeMappingUrl(st){
   return `https://www.crimemapping.com/map?${params.toString()}`;
 }
 
+function factorSection(f){
+  const cat = (f.cat || '').toLowerCase();
+  const hazardCats = [
+    'earthquake','flood','fire','oil & gas','superfund & brownfield','mines',
+    'dump sites','sewage','drinking water','chemical pollution','microwave & cell',
+    'overall pollution','freight rail','power transmission','noise','tsunami'
+  ];
+  return hazardCats.includes(cat) ? 'hazard' : 'livability';
+}
+
+function summaryTableShell(id){
+  return `<table class="sumtable summary-table" id="${id}">
+    <colgroup><col class="c-num"><col class="c-fac"><col class="c-what">
+      <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
+    <thead><tr>
+      <th>#</th><th>Factor</th><th>What it is</th>
+      <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
+    </tr></thead><tbody></tbody>
+  </table>`;
+}
+
 function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
@@ -808,8 +829,9 @@ function renderSummaryTable(st, liveResults){
   SUMMARY_ITEMS = {};
   const rows = FACTORS.map(f=>{
     const cat = f.cat || 'Other';
+    const section = factorSection(f);
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
-    const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
+    const localNote = NOTES[f.n] ? `<div class="localnote">&#128205; ${NOTES[f.n]}</div>` : '';
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
     const mapUrl = f.n === 3 ? crimeMappingUrl(st) : fill(f.map, st);
@@ -831,22 +853,43 @@ function renderSummaryTable(st, liveResults){
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
-    SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
-    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
+    SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs, section};
+    return `<tr id="sumrow-${f.n}" class="summary-row" data-section="${section}" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
       <td class="num">${f.n}</td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${links}</td>
     </tr>`;
-  }).join('');
-  $('#summaryTable').innerHTML =
-    `<colgroup><col class="c-num"><col class="c-fac"><col class="c-what">
-       <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
-     <thead><tr>
-       <th>#</th><th>Factor</th><th>What it is</th>
-       <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
-     </tr></thead><tbody>${rows}</tbody>`;
+  });
+  const hazardRows = rows.filter(row=>row.includes('data-section="hazard"')).join('');
+  const livabilityRows = rows.filter(row=>row.includes('data-section="livability"')).join('');
+  const sections = $('#summarySections');
+  if(sections){
+    sections.innerHTML = `
+      <div class="summary-section" data-section-panel="hazard">
+        <div class="summary-section-head">
+          <div><h3>Natural & Environmental Hazards</h3><p>Earthquake, flood, fire, pollution, utilities, industrial and coastal hazard context.</p></div>
+          <span class="section-count" id="hazardCount"></span>
+        </div>
+        <div class="tablewrap split-tablewrap">${summaryTableShell('summaryHazards')}</div>
+      </div>
+      <div class="summary-section" data-section-panel="livability">
+        <div class="summary-section-head">
+          <div><h3>Neighborhood & Livability Context</h3><p>Address profile, schools, crime, zoning, services, access and quality-of-life context.</p></div>
+          <span class="section-count" id="livabilityCount"></span>
+        </div>
+        <div class="tablewrap split-tablewrap">${summaryTableShell('summaryLivability')}</div>
+      </div>`;
+    $('#summaryHazards tbody').innerHTML = hazardRows;
+    $('#summaryLivability tbody').innerHTML = livabilityRows;
+  } else {
+    const table = $('#summaryTable');
+    if(table){
+      table.outerHTML = summaryTableShell('summaryTable');
+      $('#summaryTable tbody').innerHTML = rows.join('');
+    }
+  }
   buildGlanceControls();
   wireImpactLinks();
   wireSummaryRows();
@@ -883,7 +926,7 @@ window.FACTOR_EXPLAIN = window.FACTOR_EXPLAIN || {
 
 /* ---------- Inline impact summaries (from factor-explanation workbooks) ---------- */
 function wireImpactLinks(){
-  document.querySelectorAll('#summaryTable .impact-link').forEach(btn=>btn.addEventListener('click',e=>{
+  document.querySelectorAll('.summary-table .impact-link, #summaryTable .impact-link').forEach(btn=>btn.addEventListener('click',e=>{
     e.preventDefault();
     const panel = document.getElementById(`explain-${btn.dataset.n}`);
     if(!panel) return;
@@ -1374,7 +1417,7 @@ function openFactorModal(n){
   const item = SUMMARY_ITEMS[n] || SUMMARY_ITEMS[+n];
   if(!item) return;
   SELECTED_FACTOR = +n;
-  document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
+  document.querySelectorAll('.summary-table tbody tr, #summaryTable tbody tr').forEach(row=>{
     const on = row.id === `sumrow-${n}`;
     row.classList.toggle('selected', on);
     row.setAttribute('aria-pressed', String(on));
@@ -1424,51 +1467,51 @@ function openFactorModal(n){
 }
 
 function selectVisibleFactor(){
-  const visible = [...document.querySelectorAll('#summaryTable tbody tr')].filter(r=>r.style.display !== 'none');
+  const visible = [...document.querySelectorAll('.summary-table tbody tr, #summaryTable tbody tr')].filter(r=>r.style.display !== 'none');
   if(!visible.length) return;
   const selected = SELECTED_FACTOR && visible.find(r=>r.id === `sumrow-${SELECTED_FACTOR}`);
-  document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
+  document.querySelectorAll('.summary-table tbody tr, #summaryTable tbody tr').forEach(row=>{
     row.classList.toggle('selected', !!selected && row === selected);
     row.setAttribute('aria-pressed', String(!!selected && row === selected));
   });
 }
 
 function wireSummaryRows(){
-  document.querySelectorAll('#summaryTable .detail-arrow').forEach(btn=>{
+  document.querySelectorAll('.summary-table .detail-arrow, #summaryTable .detail-arrow').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       openFactorModal(+btn.dataset.detail);
     });
   });
-  document.querySelectorAll('#summaryTable .map-embed-open').forEach(btn=>{
+  document.querySelectorAll('.summary-table .map-embed-open, #summaryTable .map-embed-open').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.preventDefault();
       e.stopPropagation();
       openFaultMapModal();
     });
   });
-  document.querySelectorAll('#summaryTable .liquefaction-map-open').forEach(btn=>{
+  document.querySelectorAll('.summary-table .liquefaction-map-open, #summaryTable .liquefaction-map-open').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.preventDefault();
       e.stopPropagation();
       openLiquefactionMapModal();
     });
   });
-  document.querySelectorAll('#summaryTable .landslide-map-open').forEach(btn=>{
+  document.querySelectorAll('.summary-table .landslide-map-open, #summaryTable .landslide-map-open').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.preventDefault();
       e.stopPropagation();
       openLandslideMapModal();
     });
   });
-  document.querySelectorAll('#summaryTable .npl-map-open').forEach(btn=>{
+  document.querySelectorAll('.summary-table .npl-map-open, #summaryTable .npl-map-open').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.preventDefault();
       e.stopPropagation();
       openNplMapModal();
     });
   });
-  document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
+  document.querySelectorAll('.summary-table .tsunami-map-open, #summaryTable .tsunami-map-open').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.preventDefault();
       e.stopPropagation();
@@ -1485,7 +1528,7 @@ function closeFactorModal(){
   if(tsunamiMap){ try{ tsunamiMap.remove(); }catch(e){} tsunamiMap = null; }
   if(crimeMap){ try{ crimeMap.remove(); }catch(e){} crimeMap = null; }
   SELECTED_FACTOR = null;
-  document.querySelectorAll('#summaryTable tbody tr.selected').forEach(row=>{
+  document.querySelectorAll('.summary-table tbody tr.selected, #summaryTable tbody tr.selected').forEach(row=>{
     row.classList.remove('selected');
     row.setAttribute('aria-pressed','false');
   });
@@ -1560,20 +1603,33 @@ function downloadPdfAfterAcknowledgement(){
 /* ---------- At-a-glance interactivity: category chips, search, risk sort ---------- */
 let GLANCE = {cat:'*', q:'', sort:'num'};
 function applyGlanceFilters(){
-  const tbody=document.querySelector('#summaryTable tbody'); if(!tbody) return;
-  let rows=[...tbody.querySelectorAll('tr')];
-  rows.sort(GLANCE.sort==='risk'
-    ? (a,b)=>(+b.dataset.risk)-(+a.dataset.risk) || (+a.id.slice(7))-(+b.id.slice(7))
-    : (a,b)=>(+a.id.slice(7))-(+b.id.slice(7)));
-  rows.forEach(r=>tbody.appendChild(r));
+  const bodies=[...document.querySelectorAll('.summary-table tbody, #summaryTable tbody')];
+  if(!bodies.length) return;
   let n=0;
-  rows.forEach(r=>{
-    const ok=(GLANCE.cat==='*'||r.dataset.cat===GLANCE.cat)
-          && (!GLANCE.q || r.dataset.name.includes(GLANCE.q));
-    r.style.display = ok ? '' : 'none';
-    if(ok) n++;
+  const sectionCounts = {hazard:0, livability:0};
+  bodies.forEach(tbody=>{
+    let rows=[...tbody.querySelectorAll('tr')];
+    rows.sort(GLANCE.sort==='risk'
+      ? (a,b)=>(+b.dataset.risk)-(+a.dataset.risk) || (+a.id.slice(7))-(+b.id.slice(7))
+      : (a,b)=>(+a.id.slice(7))-(+b.id.slice(7)));
+    rows.forEach(r=>tbody.appendChild(r));
+    rows.forEach(r=>{
+      const ok=(GLANCE.cat==='*'||r.dataset.cat===GLANCE.cat)
+            && (!GLANCE.q || r.dataset.name.includes(GLANCE.q));
+      r.style.display = ok ? '' : 'none';
+      if(ok){
+        n++;
+        if(sectionCounts[r.dataset.section] !== undefined) sectionCounts[r.dataset.section]++;
+      }
+    });
   });
   const c=$('#glanceCount'); if(c) c.textContent=`showing ${n} of ${FACTORS.length}`;
+  const hc=$('#hazardCount'); if(hc) hc.textContent=`${sectionCounts.hazard} shown`;
+  const lc=$('#livabilityCount'); if(lc) lc.textContent=`${sectionCounts.livability} shown`;
+  document.querySelectorAll('.summary-section').forEach(panel=>{
+    const key=panel.dataset.sectionPanel;
+    panel.classList.toggle('hidden', !!key && sectionCounts[key] === 0);
+  });
   if(Object.keys(SUMMARY_ITEMS).length) selectVisibleFactor();
 }
 function buildGlanceControls(){
@@ -1587,6 +1643,7 @@ function buildGlanceControls(){
     b.classList.add('active'); GLANCE.cat=b.dataset.cat; applyGlanceFilters();
   }));
   const s=$('#glanceSearch'); s.value=''; s.oninput=e=>{GLANCE.q=e.target.value.trim().toLowerCase(); applyGlanceFilters();};
+  $('#sortNum').textContent=`Order 1-${FACTORS.length}`;
   $('#sortNum').onclick=()=>{GLANCE.sort='num'; $('#sortNum').classList.add('active'); $('#sortRisk').classList.remove('active'); applyGlanceFilters();};
   $('#sortRisk').onclick=()=>{GLANCE.sort='risk'; $('#sortRisk').classList.add('active'); $('#sortNum').classList.remove('active'); applyGlanceFilters();};
   $('#sortNum').classList.add('active'); $('#sortRisk').classList.remove('active');
