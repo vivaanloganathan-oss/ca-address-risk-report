@@ -775,8 +775,8 @@ function renderScoring(){
     <span class="sw" style="background:${RC.low}"></span><b>1–4 = Low</b>,
     <span class="sw" style="background:${RC.mod}"></span><b>5–7 = Moderate</b>,
     <span class="sw" style="background:${RC.high}"></span><b>8–10 = High</b>.
-    Ratings use live public-agency/API/GIS results where available. Factors without a verified live score are left unscored
-    and should be checked through their map link. Informational screening only.`;
+    Live public-agency/API/GIS results are used first. When a live score is unavailable, the table falls back to
+    map/source screening rules for that factor until a verified layer can be checked. Informational screening only.`;
 }
 
 let SUMMARY_ITEMS = {};
@@ -1611,6 +1611,20 @@ function emptyImpact(f){
   };
 }
 
+function mapFallbackImpact(f){
+  const im = emptyImpact(f);
+  IMPACT_DIMS.forEach(k => {
+    const base = f.impact && f.impact[k];
+    if(!base) return;
+    const isScored = base.level && base.level !== 'NA';
+    im[k] = {
+      level: base.level || 'NA',
+      why: isScored ? 'Map/source screening estimate: ' + base.why : base.why
+    };
+  });
+  return im;
+}
+
 function scoreToImpactLevel(score){
   const s = Number(score);
   if(!Number.isFinite(s)) return 'NA';
@@ -1651,9 +1665,9 @@ function impactFromLiveScore(f, live){
   return im;
 }
 
-// Effective per-dimension impact. Live results win; static factor text is not used as an address-specific score.
+// Effective per-dimension impact. Live results win; map/source screening is the fallback when live scoring is unavailable.
 function effImpact(f, live){
-  const im = emptyImpact(f);
+  const im = mapFallbackImpact(f);
   if(live && live.impacts){ for(const k of IMPACT_DIMS){ if(live.impacts[k]) im[k]={...live.impacts[k]}; } }
   else if(live && Number.isFinite(Number(live.score))){
     Object.assign(im, impactFromLiveScore(f, live));
