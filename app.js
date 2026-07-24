@@ -794,8 +794,9 @@ function renderSummaryTable(st, liveResults){
   const NOTES = localNotesFor(st);
   const cell = o => {
     const unscored = o.level === 'NA' && /live score|address-specific score/i.test(o.why || '');
-    const note = unscored ? 'Check map/source' : o.why;
-    return `<td class="impcell${unscored?' unscored':''}" title="${esc(o.why || '')}">${lvlPill(o.level)}<span class="w">${note}</span></td>`;
+    const screening = o.evidence === 'screening';
+    const note = unscored ? 'Check map/source' : screening ? 'Screening estimate' : o.why;
+    return `<td class="impcell${unscored?' unscored':''}${screening?' screening':''}" title="${esc(o.why || '')}">${lvlPill(o.level)}<span class="w">${note}</span></td>`;
   };
   const whatCell = (f, what) => {
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
@@ -1605,9 +1606,9 @@ function emptyImpact(f){
     ? 'No verified live score is available for this address yet. Open the map/source to assess this factor.'
     : 'No address-specific score is available for this factor yet.';
   return {
-    health: IMP('NA', why),
-    property: IMP('NA', why),
-    insurance: IMP('NA', why)
+    health: {...IMP('NA', why), evidence:'none'},
+    property: {...IMP('NA', why), evidence:'none'},
+    insurance: {...IMP('NA', why), evidence:'none'}
   };
 }
 
@@ -1619,7 +1620,8 @@ function mapFallbackImpact(f){
     const isScored = base.level && base.level !== 'NA';
     im[k] = {
       level: base.level || 'NA',
-      why: isScored ? 'Map/source screening estimate: ' + base.why : base.why
+      why: isScored ? 'Map/source screening estimate, verify before relying on it: ' + base.why : base.why,
+      evidence: isScored ? 'screening' : 'none'
     };
   });
   return im;
@@ -1656,11 +1658,11 @@ function impactFromLiveScore(f, live){
   IMPACT_DIMS.forEach(k => {
     const weight = weights[k] || 0;
     if(!Number.isFinite(base) || weight <= 0){
-      im[k] = IMP('NA', k === 'insurance' ? 'Not a standard insurance-pricing signal from this live check.' : 'No direct address-specific impact from this live check.');
+      im[k] = {...IMP('NA', k === 'insurance' ? 'Not a standard insurance-pricing signal from this live check.' : 'No direct address-specific impact from this live check.'), evidence:'live-model'};
       return;
     }
     const level = scoreToImpactLevel(base * weight);
-    im[k] = IMP(level, source + ' Scored by the ' + k.replace('property','property value') + ' weighting model.');
+    im[k] = {...IMP(level, source + ' Scored by the ' + k.replace('property','property value') + ' weighting model.'), evidence:'live-model'};
   });
   return im;
 }
@@ -1668,14 +1670,14 @@ function impactFromLiveScore(f, live){
 // Effective per-dimension impact. Live results win; map/source screening is the fallback when live scoring is unavailable.
 function effImpact(f, live){
   const im = mapFallbackImpact(f);
-  if(live && live.impacts){ for(const k of IMPACT_DIMS){ if(live.impacts[k]) im[k]={...live.impacts[k]}; } }
+  if(live && live.impacts){ for(const k of IMPACT_DIMS){ if(live.impacts[k]) im[k]={...live.impacts[k], evidence:live.impacts[k].evidence || 'live'}; } }
   else if(live && Number.isFinite(Number(live.score))){
     Object.assign(im, impactFromLiveScore(f, live));
   }
   if(live && f.n===8){
     const hi=live.score>=8;
-    im.property ={level:hi?'High':'Low', why:hi?'In a Special Flood Hazard Area — lowers value & resale.':'Minimal flood zone (Zone X) — little value impact.'};
-    im.insurance={level:hi?'High':'Low', why:hi?'SFHA triggers mandatory, costly flood insurance.':'No mandatory flood insurance required.'};
+    im.property ={level:hi?'High':'Low', why:hi?'In a Special Flood Hazard Area — lowers value & resale.':'Minimal flood zone (Zone X) — little value impact.', evidence:'live'};
+    im.insurance={level:hi?'High':'Low', why:hi?'SFHA triggers mandatory, costly flood insurance.':'No mandatory flood insurance required.', evidence:'live'};
   }
   return im;
 }
@@ -1686,6 +1688,19 @@ const DIMMETA = [['overall','Overall'],['health','Health'],['property','Property
 function bandOf(s){ return s < 0.75 ? 'No' : s < 4.5 ? 'Low' : s < 7.5 ? 'Moderate' : 'High'; }
 const BANDKEY = { No:'no', Low:'low', Moderate:'mod', High:'high' };
 
+function evidenceWeight(evidence){
+  if(evidence === 'live') return 1;
+  if(evidence === 'live-model') return .85;
+  if(evidence === 'screening') return .45;
+  return 0;
+}
+function evidenceBadge(evidence){
+  if(evidence === 'live') return '<span class="sourcechip source-live">LIVE DATA</span>';
+  if(evidence === 'live-model') return '<span class="sourcechip source-model">LIVE MODEL</span>';
+  if(evidence === 'screening') return '<span class="sourcechip source-screening">SCREENING</span>';
+  return '';
+}
+
 function computeRisk(liveResults){
   const dims = { health:{items:[]}, property:{items:[]}, insurance:{items:[]} };
   FACTORS.forEach(f=>{
@@ -1693,14 +1708,17 @@ function computeRisk(liveResults){
     for(const k of ['health','property','insurance']){
       const v = LVLNUM[im[k].level];
       if(v===null || v===undefined) continue;
-      dims[k].items.push({ n:f.n, name:f.name, cat:f.cat || 'Other', level:im[k].level, why:im[k].why, v,
-                           live: !!liveResults[f.n] });
+      const evidence = im[k].evidence || (liveResults[f.n] ? 'live' : 'screening');
+      const weight = evidenceWeight(evidence);
+      dims[k].items.push({ n:f.n, name:f.name, cat:f.cat || 'Other', level:im[k].level, why:im[k].why, v, rank:v*weight, weight, evidence,
+                           live: evidence === 'live' || evidence === 'live-model' });
     }
   });
   let sum=0;
   for(const k of ['health','property','insurance']){
     const it = dims[k].items;
-    dims[k].score = it.length ? it.reduce((a,x)=>a+x.v,0)/it.length : 0;
+    const denom = it.reduce((a,x)=>a+x.weight,0);
+    dims[k].score = denom ? it.reduce((a,x)=>a+(x.v*x.weight),0)/denom : 0;
     dims[k].band  = bandOf(dims[k].score);
     sum += dims[k].score;
   }
@@ -1708,7 +1726,7 @@ function computeRisk(liveResults){
   // union view for the "Overall" tab: each factor's worst dimension
   const byFactor = {};
   for(const k of ['health','property','insurance']) dims[k].items.forEach(x=>{
-    if(!byFactor[x.n] || x.v > byFactor[x.n].v) byFactor[x.n] = {...x, dim:k};
+    if(!byFactor[x.n] || (x.rank ?? x.v) > (byFactor[x.n].rank ?? byFactor[x.n].v)) byFactor[x.n] = {...x, dim:k};
   });
   return { dims, overall:{ score:overallScore, band:bandOf(overallScore), items:Object.values(byFactor) } };
 }
@@ -1736,11 +1754,11 @@ try{ COMPARE = JSON.parse(localStorage.getItem('riskCompare')||'[]'); }catch(e){
 function renderDrivers(){
   const set = ACTIVEDIM==='overall' ? RISK.overall.items : RISK.dims[ACTIVEDIM].items;
   const label = DIMMETA.find(d=>d[0]===ACTIVEDIM)[1];
-  const top = [...set].sort((a,b)=>b.v-a.v || (b.live?1:0)-(a.live?1:0)).slice(0,6);
+  const top = [...set].sort((a,b)=>(b.rank??b.v)-(a.rank??a.v) || (b.live?1:0)-(a.live?1:0)).slice(0,6);
   $('#driversTitle').textContent = `Top ${label.toLowerCase()} risk drivers`;
   $('#driversList').innerHTML = top.map(x=>
     `<div class="driver" data-n="${x.n}" title="Jump to this factor in the summary table">
-       <span class="d-name">#${x.n} ${x.name}${x.live?' <span class="livechip">LIVE DATA</span>':''}</span>
+       <span class="d-name">#${x.n} ${x.name} ${evidenceBadge(x.evidence)}</span>
        ${lvlPill(x.level)}<span class="d-why">${x.why}</span></div>`).join('');
   document.querySelectorAll('#driversList .driver').forEach(el=>el.addEventListener('click',()=>{
     const row=document.getElementById('sumrow-'+el.dataset.n);
@@ -1751,11 +1769,11 @@ function renderOverall(liveResults){
   RISK = computeRisk(liveResults);
   const driverHTML = x =>
     `<div class="driver" data-n="${x.n}" title="Jump to this factor in the summary table">
-       <span class="d-name">#${x.n} ${x.name}${x.live?' <span class="livechip">LIVE DATA</span>':''}</span>
+       <span class="d-name">#${x.n} ${x.name} ${evidenceBadge(x.evidence)}</span>
        ${lvlPill(x.level)}<span class="d-why">${x.why}</span></div>`;
   const items = RISK.overall.items;
   const pick = lvl => [...items].filter(x=>x.level===lvl)
-      .sort((a,b)=>b.v-a.v || (b.live?1:0)-(a.live?1:0)).slice(0,3);
+      .sort((a,b)=>(b.rank??b.v)-(a.rank??a.v) || (b.live?1:0)-(a.live?1:0)).slice(0,3);
   const render = arr => arr.length ? arr.map(driverHTML).join('')
       : '<div class="driver none">None identified at this address.</div>';
   $('#highList').innerHTML = render(pick('High'));
@@ -1768,7 +1786,7 @@ function renderOverall(liveResults){
   const liveN = Object.keys(STATE._live||{}).length;
   $('#methodBody').innerHTML =
     `<p>Each of the ${FACTORS.length} factors carries an impact level per dimension &mdash; <b>NA</b> (excluded), <b>No</b>, <b>Low</b>, <b>Moderate</b>, <b>High</b>. The lists above show the strongest High and Moderate factors for this address, live-verified factors first.</p>
-     <p><b>What's live vs. baseline:</b> ${liveN} factor(s) are scored from live, address-specific data (FEMA flood, CGS fault / liquefaction / landslide zones, CAL FIRE fire severity, OpenStreetMap amenity counts, Census ACS); the rest use their typical California exposure profile. Informational screening only &mdash; not a substitute for professional inspection or underwriting.</p>`;
+     <p><b>Evidence quality:</b> ${liveN} factor(s) include live, address-specific data. Remaining scored factors are marked <b>SCREENING</b> and use map/source screening rules only; verify those layers before making decisions. Informational screening only &mdash; not a substitute for professional inspection or underwriting.</p>`;
   return RISK;
 }
 
@@ -2230,7 +2248,7 @@ async function makePDF(){
     doc.setTextColor(...c[2]); doc.text(text,x+7,yy+11.5);
     return w;
   };
-  const topItems = [...(reportRisk.overall.items||[])].sort((a,b)=>b.v-a.v || (b.live?1:0)-(a.live?1:0));
+  const topItems = [...(reportRisk.overall.items||[])].sort((a,b)=>(b.rank??b.v)-(a.rank??a.v) || (b.live?1:0)-(a.live?1:0));
   const topHigh = topItems.filter(x=>x.level==='High').slice(0,3);
   const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
   const riskRow=(x,yy,w,item,accent)=>{

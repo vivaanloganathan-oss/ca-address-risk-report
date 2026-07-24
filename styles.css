@@ -224,6 +224,10 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
 .ms-livemap{position:absolute;inset:0;z-index:1}
 .media-chip{position:absolute;top:8px;left:8px;z-index:3}
 .livechip{display:inline-block;background:#e7f6ee;color:#157a42;border:1px solid #c8ead6;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:800;letter-spacing:.5px;vertical-align:1px}
+.sourcechip{display:inline-block;border-radius:4px;padding:1px 5px;font-size:8.5px;font-weight:800;letter-spacing:.45px;vertical-align:1px;white-space:nowrap}
+.source-live{background:#e7f6ee;color:#157a42;border:1px solid #c8ead6}
+.source-model{background:#eaf1ff;color:#2463d8;border:1px solid #cfe0ff}
+.source-screening{background:#fff7e3;color:#9a5a00;border:1px solid #f3d59a}
 
 /* ---------- TOOLBAR / FILTERS ---------- */
 .toolbar{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:30px 2px 12px}
