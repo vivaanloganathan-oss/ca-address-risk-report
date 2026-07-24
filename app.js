@@ -792,7 +792,11 @@ function crimeMappingUrl(st){
 function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
-  const cell = o => `<td class="impcell">${lvlPill(o.level)}<span class="w">${o.why}</span></td>`;
+  const cell = o => {
+    const unscored = o.level === 'NA' && /live score|address-specific score/i.test(o.why || '');
+    const note = unscored ? 'Check map/source' : o.why;
+    return `<td class="impcell${unscored?' unscored':''}" title="${esc(o.why || '')}">${lvlPill(o.level)}<span class="w">${note}</span></td>`;
+  };
   const whatCell = (f, what) => {
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     if(!imgs.length) return what;
@@ -1598,7 +1602,7 @@ const IMPACT_DIMS = ['health','property','insurance'];
 function emptyImpact(f){
   const hasLiveSource = !!(f.live || f.map);
   const why = hasLiveSource
-    ? 'No verified live score was returned for this address. Open the map/source to assess this factor.'
+    ? 'No verified live score is available for this address yet. Open the map/source to assess this factor.'
     : 'No address-specific score is available for this factor yet.';
   return {
     health: IMP('NA', why),
