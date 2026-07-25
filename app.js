@@ -834,6 +834,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
             : [17,18].includes(f.n)
               ? `<button class="rk-link map-open mines-map-open" type="button" data-mines-map="${f.n}">Open map</button>`
+            : f.n === 19
+              ? `<button class="rk-link map-open waste-map-open" type="button" data-waste-map="19">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1463,6 +1465,29 @@ function openMinesMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openWasteMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Waste Management Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Waste and dump sites map</div>
+      <div class="detail-desc">ArcGIS waste management map centered on ${esc(addr)}. Use this to screen nearby waste, dump-site, and solid-waste context.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="1d347d3e5093421f947fdc85932fe35f" theme="light" bookmarks-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=1d347d3e5093421f947fdc85932fe35f&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Waste management map. Informational screening only; verify facility status, permits, and cleanup records with official agency sources.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1680,6 +1705,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openMinesMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .waste-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openWasteMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
