@@ -66,7 +66,7 @@ const FACTORS = [
           insurance:{level:'Low',why:"An SFHA triggers mandatory flood insurance."}}},
 
  {n:9, cat:"Flood", name:"Dams & Inundation",
-  map:"https://fmds.water.ca.gov/webgis/?appid=dam_prototype_v2", recenter:'search', live:null, basemap:'topo',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=b3118c7aa0784a25b33b5bd04ca9fedd&center={LON},{LAT}&level=15", recenter:'coords', live:null, basemap:'topo',
   detail:"Whether the address lies in a downstream dam-failure inundation pathway.",
   impact:{health:{level:'NA',why:"No direct health exposure."},
           property:{level:'Low',why:"Inundation-zone location can deter buyers."},

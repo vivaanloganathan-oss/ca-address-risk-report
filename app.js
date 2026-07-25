@@ -822,6 +822,8 @@ function renderSummaryTable(st, liveResults){
           ? `<button class="rk-link map-open liquefaction-map-open" type="button" data-liquefaction-map="6">Open map</button>`
           : f.n === 7
             ? `<button class="rk-link map-open landslide-map-open" type="button" data-landslide-map="7">Open map</button>`
+            : f.n === 9
+              ? `<button class="rk-link map-open dams-map-open" type="button" data-dams-map="9">Open map</button>`
             : f.n === 10
               ? `<button class="rk-link map-open streams-map-open" type="button" data-streams-map="10">Open map</button>`
             : f.n === 11
@@ -1403,6 +1405,29 @@ function openWellsMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openDamsMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Dams & Inundation Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Dam inundation screening map</div>
+      <div class="detail-desc">ArcGIS dam and inundation map centered on ${esc(addr)}. Use this to screen downstream dam-failure context and verify official inundation boundaries with state and local emergency-management sources.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="b3118c7aa0784a25b33b5bd04ca9fedd" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled time-zone-label-enabled center="${center}" scale="18055.9548215" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=b3118c7aa0784a25b33b5bd04ca9fedd&center=${center}&level=15" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Dams and inundation map. Informational screening only; verify official dam-inundation planning zones with state and local emergency-management agencies.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openStreamsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1688,6 +1713,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openLandslideMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .dams-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openDamsMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .streams-map-open').forEach(btn=>{
