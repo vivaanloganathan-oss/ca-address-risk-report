@@ -900,11 +900,13 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open noise-level-map-open" type="button" data-noise-level-map="32">Open map</button>`
             : f.n === 33
               ? `<button class="rk-link map-open airports-map-open" type="button" data-airports-map="33">Open map</button>`
+            : f.n === 35
+              ? `<button class="rk-link map-open park-ride-map-open" type="button" data-park-ride-map="35">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
                 ? `<button class="rk-link map-open trails-map-open" type="button" data-trails-map="47">Open map</button>`
-                : [34,40,41].includes(f.n)
+                : [40,41].includes(f.n)
                   ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
                   : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
@@ -1623,6 +1625,29 @@ function openAirportsMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openParkRideMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Park & Ride Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Park & Ride screening map</div>
+      <div class="detail-desc">ArcGIS Park & Ride map centered on ${esc(addr)}. Use this to screen commuter parking and transit-transfer options near the analyzed address; verify availability, rules, and schedules with the local transit agency.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="08e7853b86d643488fda4ee573511a36" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36978595.474472" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=08e7853b86d643488fda4ee573511a36&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Park & Ride map. Informational screening only; verify lot availability, restrictions, schedules, and agency coverage with local transit sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTransportationMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -2113,6 +2138,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openAirportsMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .park-ride-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openParkRideMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .transportation-map-open').forEach(btn=>{

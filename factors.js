@@ -234,15 +234,8 @@ const FACTORS = [
           property:{level:'Moderate',why:"Flight-path parcels can see lower value."},
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
- {n:34, cat:"Facilities", name:"BART / Transit Access",
-  map:"https://www.google.com/maps/search/?api=1&query=transit%20station%20near%20{ADDR}", recenter:'addr', live:null, basemap:'street',
-  detail:"Rail/BART and transit accessibility — a convenience and value positive.",
-  impact:{health:{level:'NA',why:"No health hazard."},
-          property:{level:'No',why:"Transit access is a value positive."},
-          insurance:{level:'NA',why:"Not an insurance factor."}}},
-
  {n:35, cat:"Facilities", name:"Park & Ride",
-  map:"https://www.google.com/maps/search/?api=1&query=park%20and%20ride%20near%20{ADDR}", recenter:'addr', live:null, basemap:'street',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=08e7853b86d643488fda4ee573511a36&center={LON},{LAT}&level=5", recenter:'coords', live:null, basemap:'street',
   detail:"Nearby commuter park-and-ride lots supporting the commute.",
   impact:{health:{level:'NA',why:"No health hazard."},
           property:{level:'No',why:"Commute convenience is a minor positive."},
