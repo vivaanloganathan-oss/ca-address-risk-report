@@ -671,16 +671,58 @@ async function localEnvironment(lat, lon){
     + `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
   const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}`
     + `&current=us_aqi,pm2_5,ozone&timezone=auto`;
+  const cfg = window.APP_CONFIG || {};
+  const owKey = cfg.OPENWEATHER_AIR_KEY || cfg.OPENWEATHER_KEY || "";
+  const owUrl = owKey
+    ? `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${encodeURIComponent(owKey)}`
+    : null;
   try{
-    const [weatherRes, airRes] = await Promise.allSettled([
+    const jobs = [
       fetch(weatherUrl).then(r=>r.ok?r.json():null),
       fetch(airUrl).then(r=>r.ok?r.json():null)
-    ]);
+    ];
+    if(owUrl) jobs.push(fetch(owUrl).then(r=>r.ok?r.json():null));
+    const [weatherRes, airRes, openWeatherRes] = await Promise.allSettled(jobs);
     return {
-      weather: weatherRes.status === 'fulfilled' ? weatherRes.value : null,
-      air: airRes.status === 'fulfilled' ? airRes.value : null
+      weather: weatherRes.status === "fulfilled" ? weatherRes.value : null,
+      air: airRes.status === "fulfilled" ? airRes.value : null,
+      openWeatherAir: openWeatherRes && openWeatherRes.status === "fulfilled" ? openWeatherRes.value : null
     };
   }catch(e){ return null; }
+}
+
+function openWeatherAqiInfo(aqi){
+  const n = Number(aqi);
+  if(!Number.isFinite(n)) return {level:"NA", score:null, label:"Unavailable", note:"OpenWeather did not return an AQI value."};
+  if(n <= 1) return {level:"No Risk", score:0, label:"Good", note:"OpenWeather reports good current air quality."};
+  if(n === 2) return {level:"Low Risk", score:3, label:"Fair", note:"OpenWeather reports fair current air quality."};
+  if(n === 3) return {level:"Moderate Risk", score:5, label:"Moderate", note:"OpenWeather reports moderate current air quality."};
+  if(n === 4) return {level:"High Risk", score:8, label:"Poor", note:"OpenWeather reports poor current air quality."};
+  return {level:"High Risk", score:10, label:"Very Poor", note:"OpenWeather reports very poor current air quality."};
+}
+
+function openWeatherAirPollutionResult(env){
+  const item = env && env.openWeatherAir && env.openWeatherAir.list && env.openWeatherAir.list[0];
+  if(!item || !item.main) return null;
+  const aq = openWeatherAqiInfo(item.main.aqi);
+  const c = item.components || {};
+  const fmt = v => Number.isFinite(+v) ? (+v).toFixed(1) : "n/a";
+  const desc = `Live OpenWeather air pollution check: AQI ${item.main.aqi} (${aq.label}); PM2.5 ${fmt(c.pm2_5)} ug/m3, PM10 ${fmt(c.pm10)} ug/m3, ozone ${fmt(c.o3)} ug/m3.`;
+  const healthWhy = aq.score >= 8
+    ? "Current air pollution is elevated; sensitive groups should reduce prolonged outdoor exposure."
+    : aq.score >= 5
+      ? "Current air pollution is moderate; sensitive groups should review local guidance."
+      : "Current air pollution is not elevated in this live OpenWeather check.";
+  return {
+    label: aq.level,
+    score: aq.score,
+    desc,
+    impacts:{
+      health: IMP(aq.level.replace(" Risk", ""), healthWhy),
+      property: IMP(aq.score >= 8 ? "Moderate" : "Low", "Air quality can affect desirability, especially during smoke or high-pollution periods."),
+      insurance: IMP("NA", "Not a standard insurance-pricing factor.")
+    }
+  };
 }
 
 function livabilityResults(c, census){
@@ -850,6 +892,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open gas-station-map-open" type="button" data-gas-station-map="24">Open map</button>`
             : f.n === 29
               ? `<button class="rk-link map-open traffic-density-map-open" type="button" data-traffic-density-map="29">Open map</button>`
+            : f.n === 30
+              ? `<button class="rk-link map-open rail-tracks-map-open" type="button" data-rail-tracks-map="30">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1481,6 +1525,29 @@ function openTrafficDensityMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openRailTracksMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Rail Tracks Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Rail tracks screening map</div>
+      <div class="detail-desc">ArcGIS rail tracks map centered on ${esc(addr)}. Use this to screen nearby freight and rail-corridor context; verify active rail operations, crossings, noise, and vibration with official rail and transportation sources.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="11ef92c73d434e0bbad36ad6efcef700" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.217155" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=11ef92c73d434e0bbad36ad6efcef700&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Rail tracks map. Informational screening only; verify active rail operations, crossings, noise, and vibration with official rail and transportation sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTransportationMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1943,6 +2010,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openTrafficDensityMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .rail-tracks-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openRailTracksMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .transportation-map-open').forEach(btn=>{
@@ -2559,6 +2633,8 @@ async function analyze(){
   if(fhsz){ liveResults[11]=fhsz; }
   if(npl){ liveResults[15]=npl; }
   if(tsunami){ liveResults[46]=tsunami; }
+  const airPollution = openWeatherAirPollutionResult(env);
+  if(airPollution){ liveResults[27]=airPollution; }
   Object.assign(liveResults, livabilityResults(amen, census));
   if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`, impacts:{health:IMP('NA','Live Census demographic context, not a health hazard.'),property:IMP('No','Live Census socioeconomic context; not itself a risk.'),insurance:IMP('NA','Not an insurance-pricing factor.')}}; }
 
@@ -2570,7 +2646,7 @@ async function analyze(){
   renderEnvironment(env);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
   const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
-  $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding & basemap © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather/Air: Open-Meteo. `
+  $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding & basemap © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather: Open-Meteo · Air pollution: OpenWeather. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
   STATE._dims=d; STATE._census=census; STATE._amen=amen; STATE._env=env; STATE._risk=R;

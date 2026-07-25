@@ -206,8 +206,8 @@ const FACTORS = [
           property:{level:'Low',why:"Freeway adjacency can lower value."},
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
- {n:30, cat:"Freight Rail", name:"Freight Rail Tracks",
-  map:"https://www.arcgis.com/apps/webappviewer/index.html?id=010cb07a67a4437f9db5e72090adb0dc&find={ADDR}", recenter:'addr', live:null, basemap:'street',
+ {n:30, cat:"Freight Rail", name:"Rail Tracks",
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=11ef92c73d434e0bbad36ad6efcef700&center={LON},{LAT}&level=8", recenter:'coords', live:null, basemap:'street',
   detail:"Active freight rail corridors near the address.",
   impact:{health:{level:'Low',why:"Noise/vibration and crossing hazards nearby."},
           property:{level:'Low',why:"Track adjacency can reduce value."},
