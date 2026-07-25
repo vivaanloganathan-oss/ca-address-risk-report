@@ -902,6 +902,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open airports-map-open" type="button" data-airports-map="33">Open map</button>`
             : f.n === 35
               ? `<button class="rk-link map-open park-ride-map-open" type="button" data-park-ride-map="35">Open map</button>`
+            : f.n === 36
+              ? `<button class="rk-link map-open cemeteries-map-open" type="button" data-cemeteries-map="36">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1648,6 +1650,29 @@ function openParkRideMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openCemeteriesMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Cemeteries Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Cemeteries screening map</div>
+      <div class="detail-desc">ArcGIS cemeteries map centered on ${esc(addr)}. Use this to screen mapped cemetery locations near the analyzed address; verify site boundaries, records, and local context with official local sources.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="0c82d4015f554b51b36f0e7e46ce3c56" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36978595.474472" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=0c82d4015f554b51b36f0e7e46ce3c56&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Cemeteries map. Informational screening only; verify site boundaries, records, and local context with official local sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTransportationMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -2145,6 +2170,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openParkRideMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .cemeteries-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openCemeteriesMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .transportation-map-open').forEach(btn=>{

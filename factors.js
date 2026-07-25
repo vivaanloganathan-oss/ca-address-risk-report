@@ -242,7 +242,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:36, cat:"Cemeteries", name:"Cemeteries",
-  map:"https://www.google.com/maps/search/?api=1&query=cemetery%20near%20{ADDR}", recenter:'addr', live:null, basemap:'street',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=0c82d4015f554b51b36f0e7e46ce3c56&center={LON},{LAT}&level=5", recenter:'coords', live:null, basemap:'street',
   detail:"Cemetery proximity (a buyer-preference factor for some).",
   impact:{health:{level:'NA',why:"No health effect."},
           property:{level:'Low',why:"A buyer-preference factor for some."},
