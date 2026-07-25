@@ -137,7 +137,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
  {n:20, cat:"Sewage", name:"Sewage / Wastewater Treatment",
-  map:"https://www.waterandwastewater.com/us-wastewater-treatment-plants-map/", recenter:'search', live:null, basemap:'gray',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=9424e1d671d14ab5ae7c0350eb2cfff3&center={LON},{LAT}&level=13", recenter:'coords', live:null, basemap:'gray',
   detail:"Proximity to wastewater treatment plants.",
   impact:{health:{level:'Low',why:"Odor/nuisance only if immediately adjacent."},
           property:{level:'Low',why:"Adjacent plants can reduce desirability."},

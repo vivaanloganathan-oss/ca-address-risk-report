@@ -836,6 +836,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open mines-map-open" type="button" data-mines-map="17">Open map</button>`
             : f.n === 19
               ? `<button class="rk-link map-open waste-map-open" type="button" data-waste-map="19">Open map</button>`
+            : f.n === 20
+              ? `<button class="rk-link map-open sewage-map-open" type="button" data-sewage-map="20">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1488,6 +1490,29 @@ function openWasteMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openSewageMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Water / Sewage Treatment Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Water and wastewater treatment map</div>
+      <div class="detail-desc">ArcGIS water and sewage treatment map centered on ${esc(addr)}. Use this to screen nearby treatment facilities and verify facility details with the relevant utility or public agency.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="9424e1d671d14ab5ae7c0350eb2cfff3" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=9424e1d671d14ab5ae7c0350eb2cfff3&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Water and sewage treatment map. Informational screening only; verify facility status, permits, and operations with official local utility or agency records.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1712,6 +1737,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openWasteMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .sewage-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openSewageMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
