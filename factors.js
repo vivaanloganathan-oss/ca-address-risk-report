@@ -151,7 +151,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:22, cat:"Drinking Water", name:"Ground Water Collection",
-  map:"https://wdl.water.ca.gov/waterdatalibrary/Map.aspx", recenter:'search', live:null, basemap:'gray',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=56ad6d904e3e4d898ae5b17340a5335c&center={LON},{LAT}&level=12", recenter:'coords', live:null, basemap:'gray',
   detail:"Whether supply relies on local groundwater wells/basins vs. treated surface water.",
   impact:{health:{level:'Low',why:"Local well reliance can affect water quality."},
           property:{level:'Low',why:"Basin dependence can matter in droughts."},
