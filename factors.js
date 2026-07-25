@@ -165,7 +165,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:24, cat:"Chemical Pollution", name:"Gas Stations",
-  map:"https://www.arcgis.com/apps/mapviewer/index.html?layers=ec575b2693f64199866bc18744d232fe&center={LON},{LAT}&level=14", recenter:'coords', live:null, basemap:'street',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=a0e13acf57814fef8ef60a4d651b1fd3&center={LON},{LAT}&level=14", recenter:'coords', live:null, basemap:'street',
   detail:"Retail fuel and underground storage tanks nearby.",
   impact:{health:{level:'Low',why:"UST leaks/vapors risk for adjacent parcels."},
           property:{level:'Low',why:"Adjacency can reduce desirability."},

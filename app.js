@@ -846,6 +846,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open groundwater-map-open" type="button" data-groundwater-map="22">Open map</button>`
             : f.n === 23
               ? `<button class="rk-link map-open pesticide-map-open" type="button" data-pesticide-map="23">Open map</button>`
+            : f.n === 24
+              ? `<button class="rk-link map-open gas-station-map-open" type="button" data-gas-station-map="24">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1613,6 +1615,29 @@ function openPesticideMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openGasStationMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Gas Station Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Gas station screening map</div>
+      <div class="detail-desc">ArcGIS gas station map centered on ${esc(addr)}. Use this to screen nearby retail fuel sites and underground storage tank context; verify current facility status with official state and local records.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="a0e13acf57814fef8ef60a4d651b1fd3" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=a0e13acf57814fef8ef60a4d651b1fd3&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Gas station map. Informational screening only; verify fuel sites, underground storage tanks, and cleanup records with official state and local sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1872,6 +1897,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openPesticideMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .gas-station-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openGasStationMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
