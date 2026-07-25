@@ -221,7 +221,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
  {n:32, cat:"Noise", name:"Noise Level",
-  map:"https://experience.arcgis.com/experience/ca7be47121e24f2bb8f5e3017051d402/", recenter:'search', live:null, basemap:'street',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=4716b7a4c6a447a186acd90b598a541b&center={LON},{LAT}&level=8", recenter:'coords', live:null, basemap:'street',
   detail:"Modeled transportation noise (road, rail, aviation) at the address.",
   impact:{health:{level:'Low',why:"Chronic noise affects sleep and stress."},
           property:{level:'Moderate',why:"Noise materially affects desirability and value."},
