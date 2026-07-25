@@ -213,8 +213,8 @@ const FACTORS = [
           property:{level:'Low',why:"Track adjacency can reduce value."},
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
- {n:31, cat:"Power Transmission", name:"High-Voltage Power Lines",
-  map:"https://felt.com/map/US-Electric-Power-Transmission-Lines-in-the-city-of-San-Francisco-California-owyaIpVBTVONQwcJ9ALn9CqB?loc={LAT},{LON},13z", recenter:'coords', live:null, basemap:'topo',
+ {n:31, cat:"Power Transmission", name:"Powerline",
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=c2a07983f4ec44e5b1379263e1eb7595&center={LON},{LAT}&level=8", recenter:'coords', live:null, basemap:'topo',
   detail:"High-voltage transmission corridors; ELF-EMF falls off quickly with distance.",
   impact:{health:{level:'Low',why:"ELF-EMF drops quickly with distance from lines."},
           property:{level:'Low',why:"Under/adjacent-to-line parcels are less desirable."},
