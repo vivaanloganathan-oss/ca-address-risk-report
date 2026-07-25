@@ -806,7 +806,7 @@ function renderSummaryTable(st, liveResults){
       <div class="inline-explain hidden" id="explain-${f.n}" data-name="${f.name}" data-srcs="${imgs.join('|')}"></div>`;
   };
   SUMMARY_ITEMS = {};
-  const rows = FACTORS.map(f=>{
+  const rows = FACTORS.map((f, displayIndex)=>{
     const cat = f.cat || 'Other';
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
@@ -832,8 +832,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open wells-map-open" type="button" data-wells-map="14">Open map</button>`
             : f.n === 15
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
-            : [17,18].includes(f.n)
-              ? `<button class="rk-link map-open mines-map-open" type="button" data-mines-map="${f.n}">Open map</button>`
+            : f.n === 17
+              ? `<button class="rk-link map-open mines-map-open" type="button" data-mines-map="17">Open map</button>`
             : f.n === 19
               ? `<button class="rk-link map-open waste-map-open" type="button" data-waste-map="19">Open map</button>`
               : f.n === 46
@@ -849,7 +849,7 @@ function renderSummaryTable(st, liveResults){
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
     return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
-      <td class="num">${f.n}</td>
+      <td class="num">${displayIndex + 1}</td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
@@ -2633,7 +2633,7 @@ async function makePDF(){
     y+=24;
   };
   appendixHeader();
-  FACTORS.forEach(f=>{
+  FACTORS.forEach((f, displayIndex)=>{
     const cat = f.cat || 'Other';
     const lv=live[f.n]; const rk=riskKey(lv&&lv.label); const col=PDFRC[rk];
     const detail=(lv&&lv.desc)?lv.desc:f.detail;
@@ -2644,7 +2644,7 @@ async function makePDF(){
     doc.setDrawColor(238,242,247); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,rowH,5,5,'FD');
     doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,3,rowH-2,'F');
     doc.setFont('helvetica','bold'); doc.setFontSize(8.7); doc.setTextColor(20,28,46);
-    doc.text(`#${f.n} ${f.name}`, M+10, y+14);
+    doc.text(`#${displayIndex + 1} ${f.name}`, M+10, y+14);
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
     doc.text(desc, M+10, y+25);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(43,57,77);

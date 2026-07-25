@@ -129,13 +129,6 @@ const FACTORS = [
           property:{level:'Low',why:"Subsidence risk can affect nearby parcels."},
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
- {n:18, cat:"Mines", name:"Mines & Fault-Line Overlap",
-  map:"https://maps.conservation.ca.gov/mol/index.html", recenter:'search', live:null, basemap:'topo',
-  detail:"Mine sites coincident with fault zones — a compound stability concern.",
-  impact:{health:{level:'Low',why:"Compound subsidence/seismic concern if present."},
-          property:{level:'Low',why:"Combined hazard can affect value where present."},
-          insurance:{level:'NA',why:"Not a standard insurance factor."}}},
-
  {n:19, cat:"Dump Sites", name:"Waste / Dump Sites",
   map:"https://oehha.maps.arcgis.com/apps/instant/sidebar/index.html?appid=32262911130441d68d0521ec10b429a5&center={LON},{LAT}&level=13", recenter:'coords', live:null, basemap:'gray',
   detail:"Landfills and solid-waste disposal sites near the address.",
