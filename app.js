@@ -824,6 +824,8 @@ function renderSummaryTable(st, liveResults){
             ? `<button class="rk-link map-open landslide-map-open" type="button" data-landslide-map="7">Open map</button>`
             : f.n === 10
               ? `<button class="rk-link map-open streams-map-open" type="button" data-streams-map="10">Open map</button>`
+            : f.n === 13
+              ? `<button class="rk-link map-open pipeline-map-open" type="button" data-pipeline-map="13">Open map</button>`
             : f.n === 15
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
               : f.n === 46
@@ -1311,6 +1313,31 @@ function impactBlock(label, item){
 }
 
 
+function openPipelineMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Oil, Gas & Hazard Pipelines Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Pipeline screening perimeter</div>
+      <div class="detail-desc">ArcGIS pipeline map centered on ${esc(addr)}. The ring marks the address-centered screening area; confirm exact pipeline locations in PHMSA NPMS and by calling 811 before any digging.</div>
+      <div class="arcgis-perimeter-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="8f99a6da99c94bf5b71498d5bc7d3da9" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.2171545" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        <div class="map-perimeter-ring" aria-hidden="true"></div>
+        <div class="map-center-pin" aria-hidden="true"></div>
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=8f99a6da99c94bf5b71498d5bc7d3da9&center=${center}&level=9" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+        <a class="btn ghost detail-map" href="https://pvnpms.phmsa.dot.gov/PublicViewer/" target="_blank" rel="noopener">Open PHMSA NPMS ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Pipeline map. PHMSA may require accepting its own terms/disclaimer. Informational screening only; never use this as an exact pipeline-location source.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openStreamsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1510,6 +1537,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openStreamsMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .pipeline-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openPipelineMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .npl-map-open').forEach(btn=>{

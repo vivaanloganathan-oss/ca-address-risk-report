@@ -462,3 +462,9 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .crime-address-box small{color:var(--muted);font-weight:700}
 .crime-report-frame{display:block;width:100%;height:620px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}
 @media(max-width:760px){.crime-report-frame{height:560px}}
+
+.arcgis-perimeter-wrap{position:relative;border-radius:12px;overflow:hidden}
+.arcgis-perimeter-wrap .arcgis-factor-map{border-radius:12px}
+.map-perimeter-ring{position:absolute;left:50%;top:50%;width:min(54%,420px);aspect-ratio:1;border:4px solid rgba(47,109,246,.85);border-radius:999px;transform:translate(-50%,-50%);box-shadow:0 0 0 9999px rgba(47,109,246,.08),0 0 0 8px rgba(255,255,255,.72);pointer-events:none;z-index:5}
+.map-center-pin{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:999px;background:#ef4444;border:3px solid #fff;transform:translate(-50%,-50%);box-shadow:0 2px 9px rgba(15,23,42,.35);pointer-events:none;z-index:6}
+@media(max-width:760px){.map-perimeter-ring{width:70%}}
