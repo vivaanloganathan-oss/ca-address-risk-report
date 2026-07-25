@@ -824,6 +824,8 @@ function renderSummaryTable(st, liveResults){
             ? `<button class="rk-link map-open landslide-map-open" type="button" data-landslide-map="7">Open map</button>`
             : f.n === 10
               ? `<button class="rk-link map-open streams-map-open" type="button" data-streams-map="10">Open map</button>`
+            : f.n === 11
+              ? `<button class="rk-link map-open fire-hazard-map-open" type="button" data-fire-hazard-map="11">Open map</button>`
             : f.n === 13
               ? `<button class="rk-link map-open pipeline-map-open" type="button" data-pipeline-map="13">Open map</button>`
             : f.n === 14
@@ -1315,6 +1317,36 @@ function impactBlock(label, item){
 }
 
 
+function arcgisLocationOverlay(addr){
+  return `<div class="arcgis-location-callout" aria-hidden="true">
+    <div class="arcgis-location-bubble">${esc(addr)}</div>
+    <div class="arcgis-location-dot"></div>
+  </div>`;
+}
+
+function openFireHazardMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Fire Hazard Severity Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Fire hazard map</div>
+      <div class="detail-desc">ArcGIS fire hazard map centered on ${esc(addr)}. Verify official fire hazard designations with CAL FIRE and local agencies.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="fca1359f7f244f15a339fab249ad6c54" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=fca1359f7f244f15a339fab249ad6c54&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Fire hazard map. Informational screening only; verify parcel-level designations with official fire agencies.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openPipelineMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1324,7 +1356,10 @@ function openPipelineMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">Pipeline map</div>
       <div class="detail-desc">ArcGIS pipeline map centered on ${esc(addr)}. Confirm exact pipeline locations in PHMSA NPMS and by calling 811 before any digging.</div>
-      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="8f99a6da99c94bf5b71498d5bc7d3da9" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="8f99a6da99c94bf5b71498d5bc7d3da9" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
       <div class="detail-actions">
         <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=8f99a6da99c94bf5b71498d5bc7d3da9&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
         <a class="btn ghost detail-map" href="https://pvnpms.phmsa.dot.gov/PublicViewer/" target="_blank" rel="noopener">Open PHMSA NPMS ↗</a>
@@ -1345,7 +1380,10 @@ function openWellsMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">Oil and gas wells map</div>
       <div class="detail-desc">ArcGIS oil and natural gas wells map centered on ${esc(addr)}. Use this as a screening view and verify individual well records with CalGEM.</div>
-      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="883592038b3f4f4082302ca7ede891bd" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="883592038b3f4f4082302ca7ede891bd" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
       <div class="detail-actions">
         <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=883592038b3f4f4082302ca7ede891bd&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
         <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/doggr/wellfinder/" target="_blank" rel="noopener">Open CalGEM Well Finder ↗</a>
@@ -1556,6 +1594,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openStreamsMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .fire-hazard-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openFireHazardMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .pipeline-map-open').forEach(btn=>{
