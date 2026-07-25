@@ -826,6 +826,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open streams-map-open" type="button" data-streams-map="10">Open map</button>`
             : f.n === 13
               ? `<button class="rk-link map-open pipeline-map-open" type="button" data-pipeline-map="13">Open map</button>`
+            : f.n === 14
+              ? `<button class="rk-link map-open wells-map-open" type="button" data-wells-map="14">Open map</button>`
             : f.n === 15
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
               : f.n === 46
@@ -1338,6 +1340,27 @@ function openPipelineMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openWellsMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Oil & Natural Gas Wells Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Oil and gas wells map</div>
+      <div class="detail-desc">ArcGIS oil and natural gas wells map centered on ${esc(addr)}. Use this as a screening view and verify individual well records with CalGEM.</div>
+      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="883592038b3f4f4082302ca7ede891bd" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="577790.5542885" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=883592038b3f4f4082302ca7ede891bd&center=${center}&level=11" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+        <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/doggr/wellfinder/" target="_blank" rel="noopener">Open CalGEM Well Finder ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Oil and natural gas wells map. Informational screening only; verify well status, plugging records, and permits with CalGEM.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openStreamsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1544,6 +1567,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openPipelineMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .wells-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openWellsMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .npl-map-open').forEach(btn=>{
