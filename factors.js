@@ -130,7 +130,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
  {n:19, cat:"Dump Sites", name:"Waste / Dump Sites",
-  map:"https://oehha.maps.arcgis.com/apps/instant/sidebar/index.html?appid=32262911130441d68d0521ec10b429a5&center={LON},{LAT}&level=13", recenter:'coords', live:null, basemap:'gray',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=1d347d3e5093421f947fdc85932fe35f&center={LON},{LAT}&level=13", recenter:'coords', live:null, basemap:'gray',
   detail:"Landfills and solid-waste disposal sites near the address.",
   impact:{health:{level:'Low',why:"Odor, vectors or legacy gas if very close."},
           property:{level:'Low',why:"Proximity can lower desirability."},

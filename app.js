@@ -1471,11 +1471,11 @@ function openWasteMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
   const addr = STATE.display || 'the analyzed address';
-  $('#xmodalTitle').textContent = 'Waste Management Map';
+  $("#xmodalTitle").textContent = "Waste / Dump Sites Map";
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
       <div class="detail-section-title">Waste and dump sites map</div>
-      <div class="detail-desc">ArcGIS waste management map centered on ${esc(addr)}. Use this to screen nearby waste, dump-site, and solid-waste context.</div>
+      <div class="detail-desc">ArcGIS Waste / Dump Sites map centered on ${esc(addr)}. Use this to screen nearby waste, dump-site, and solid-waste context.</div>
       <div class="arcgis-location-wrap">
         <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="1d347d3e5093421f947fdc85932fe35f" theme="light" bookmarks-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
         ${arcgisLocationOverlay(addr)}
