@@ -848,6 +848,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open pesticide-map-open" type="button" data-pesticide-map="23">Open map</button>`
             : f.n === 24
               ? `<button class="rk-link map-open gas-station-map-open" type="button" data-gas-station-map="24">Open map</button>`
+            : f.n === 29
+              ? `<button class="rk-link map-open traffic-density-map-open" type="button" data-traffic-density-map="29">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1456,6 +1458,29 @@ function openStreamsMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openTrafficDensityMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Traffic Density Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Traffic density screening map</div>
+      <div class="detail-desc">ArcGIS traffic density map centered on ${esc(addr)}. Use this to screen nearby traffic-volume context, roadway exposure, and transportation-related air/noise concerns.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="0802162ac417418a9fb7a2c85c60b6b2" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="288895.277144" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=0802162ac417418a9fb7a2c85c60b6b2&center=${center}&level=11" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Traffic density map. Informational screening only; verify traffic volumes, roadway exposure, and air/noise concerns with official transportation and environmental sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTransportationMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1911,6 +1936,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openTsunamiMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .traffic-density-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openTrafficDensityMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .transportation-map-open').forEach(btn=>{

@@ -199,8 +199,8 @@ const FACTORS = [
           property:{level:'Low',why:"High-burden areas can see lower demand."},
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
- {n:29, cat:"Overall Pollution", name:"Highway Traffic Pollution",
-  map:"https://ext.trackingcalifornia.org/traffic/#/map/explore", recenter:'search', live:null, basemap:'street',
+ {n:29, cat:"Overall Pollution", name:"Traffic Density",
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=0802162ac417418a9fb7a2c85c60b6b2&center={LON},{LAT}&level=11", recenter:'coords', live:null, basemap:'street',
   detail:"Near-roadway / freeway-corridor air and noise exposure.",
   impact:{health:{level:'Moderate',why:"Near-freeway air/noise harms health within ~500 ft."},
           property:{level:'Low',why:"Freeway adjacency can lower value."},
