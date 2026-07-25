@@ -844,6 +844,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open water-standard-map-open" type="button" data-water-standard-map="21">Open map</button>`
             : f.n === 22
               ? `<button class="rk-link map-open groundwater-map-open" type="button" data-groundwater-map="22">Open map</button>`
+            : f.n === 23
+              ? `<button class="rk-link map-open pesticide-map-open" type="button" data-pesticide-map="23">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1588,6 +1590,29 @@ function openGroundwaterMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openPesticideMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Pesticide Use Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Pesticide use screening map</div>
+      <div class="detail-desc">ArcGIS pesticide use map centered on ${esc(addr)}. Use this to screen agricultural pesticide context and verify application or exposure questions with official state and county records.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="0999601fd006449895555a7c150d6c61" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="9244648.868618" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=0999601fd006449895555a7c150d6c61&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Pesticide use map. Informational screening only; verify pesticide application records and exposure concerns with official state and county sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1840,6 +1865,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openGroundwaterMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .pesticide-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openPesticideMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{

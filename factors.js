@@ -158,7 +158,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:23, cat:"Chemical Pollution", name:"Pesticide Use",
-  map:"https://trackingcalifornia.org/data-and-tools/pesticide-mapping-tool#gsc.tab=0", recenter:'search', live:null, basemap:'topo',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=0999601fd006449895555a7c150d6c61&center={LON},{LAT}&level=8", recenter:'coords', live:null, basemap:'topo',
   detail:"Agricultural pesticide application intensity in the surrounding area.",
   impact:{health:{level:'Moderate',why:"Heavy nearby application raises exposure."},
           property:{level:'Low',why:"Ag-adjacency can deter some buyers."},
