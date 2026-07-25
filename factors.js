@@ -228,7 +228,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:33, cat:"Facilities", name:"Airports & Overflight",
-  map:"https://gis.data.ca.gov/datasets/082f0a402b354e53a7df995de3317fe2_0/explore?location={LAT}%2C{LON}%2C11", recenter:'coords', live:null, basemap:'imagery',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=53cef1e525de46b9af96d9a1eae9cb8b&center={LON},{LAT}&level=5", recenter:'coords', live:null, basemap:'street',
   detail:"Airport proximity and approach-path overflight, plus access convenience.",
   impact:{health:{level:'Low',why:"Overflight noise under approach paths."},
           property:{level:'Moderate',why:"Flight-path parcels can see lower value."},

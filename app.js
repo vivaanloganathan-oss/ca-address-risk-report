@@ -898,6 +898,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open powerline-map-open" type="button" data-powerline-map="31">Open map</button>`
             : f.n === 32
               ? `<button class="rk-link map-open noise-level-map-open" type="button" data-noise-level-map="32">Open map</button>`
+            : f.n === 33
+              ? `<button class="rk-link map-open airports-map-open" type="button" data-airports-map="33">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1598,6 +1600,29 @@ function openNoiseLevelMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openAirportsMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Airports Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Airports and overflight screening map</div>
+      <div class="detail-desc">ArcGIS airports map centered on ${esc(addr)}. Use this to screen nearby airports, airfields, and overflight context; verify runway use, flight paths, and noise exposure with official aviation and local planning sources.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="53cef1e525de46b9af96d9a1eae9cb8b" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="18489297.737236" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=53cef1e525de46b9af96d9a1eae9cb8b&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Airports and overflight map. Informational screening only; verify runway use, flight paths, and noise exposure with official aviation and local planning sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTransportationMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -2081,6 +2106,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openNoiseLevelMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .airports-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openAirportsMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .transportation-map-open').forEach(btn=>{
