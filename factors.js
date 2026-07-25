@@ -331,7 +331,14 @@ const FACTORS = [
   detail:"California Geological Survey tsunami evacuation map for coastal inundation planning; opens zoomed to the searched address.",
   impact:{health:{level:'High',why:"Tsunami zones indicate life-safety evacuation exposure during rare coastal events."},
           property:{level:'Moderate',why:"Mapped coastal evacuation context can affect due diligence and buyer perception."},
-          insurance:{level:'Low',why:"Tsunami exposure is generally reviewed through flood / coastal hazard coverage context."}}}
+          insurance:{level:'Low',why:"Tsunami exposure is generally reviewed through flood / coastal hazard coverage context."}}},
+
+ {n:47, cat:"Trails", name:"Trails & Outdoor Access",
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=202e77f7415c45a1a02768e69c6dafce&center={LON},{LAT}&level=12", recenter:'coords', live:null, basemap:'topo',
+  detail:"ArcGIS trail and outdoor-access map centered on the searched address; use it to review nearby trail networks and recreation access.",
+  impact:{health:{level:'No',why:"Trail access can support walking, recreation, and outdoor activity; not a hazard by itself."},
+          property:{level:'Low',why:"Nearby trails and open-space access can support livability and buyer appeal."},
+          insurance:{level:'NA',why:"Trail access is not a standard insurance-pricing factor."}}}
 ];
 
 if (typeof module !== 'undefined') module.exports = { FACTORS };

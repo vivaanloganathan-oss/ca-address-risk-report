@@ -834,6 +834,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
+              : f.n === 47
+                ? `<button class="rk-link map-open trails-map-open" type="button" data-trails-map="47">Open map</button>`
                 : [34,40,41].includes(f.n)
                   ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
                   : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
@@ -1435,6 +1437,29 @@ function openTransportationMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openTrailsMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Trails & Outdoor Access Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Trails and outdoor access map</div>
+      <div class="detail-desc">ArcGIS trails map centered on ${esc(addr)}. Use this to review nearby trail networks, open-space connections, and recreation access.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="202e77f7415c45a1a02768e69c6dafce" theme="light" bookmarks-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=202e77f7415c45a1a02768e69c6dafce&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Trails and outdoor access map. Informational screening only; verify trail access, closures, ownership, and rules with official local agencies.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openLiquefactionMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1636,6 +1661,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openTransportationMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .trails-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openTrailsMapModal();
     });
   });
 }
