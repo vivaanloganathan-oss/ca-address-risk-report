@@ -822,6 +822,8 @@ function renderSummaryTable(st, liveResults){
           ? `<button class="rk-link map-open liquefaction-map-open" type="button" data-liquefaction-map="6">Open map</button>`
           : f.n === 7
             ? `<button class="rk-link map-open landslide-map-open" type="button" data-landslide-map="7">Open map</button>`
+            : f.n === 10
+              ? `<button class="rk-link map-open streams-map-open" type="button" data-streams-map="10">Open map</button>`
             : f.n === 15
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
               : f.n === 46
@@ -1309,6 +1311,26 @@ function impactBlock(label, item){
 }
 
 
+function openStreamsMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Rivers, Streams & Creeks Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Streams and waterways map</div>
+      <div class="detail-desc">ArcGIS stream map centered on ${esc(addr)}.</div>
+      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="671c48498ef04a84b87939d61051709f" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="4513.988705" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=671c48498ef04a84b87939d61051709f&center=${center}&level=16" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Streams and waterways map. Informational screening only; verify flood, erosion, and drainage concerns with official local and state sources.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openTransportationMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1481,6 +1503,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openLandslideMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .streams-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openStreamsMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .npl-map-open').forEach(btn=>{
