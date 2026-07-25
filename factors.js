@@ -144,7 +144,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:21, cat:"Drinking Water", name:"Drinking Water Standard",
-  map:"https://wdl.water.ca.gov/waterdatalibrary/Map.aspx", recenter:'search', live:null, basemap:'gray',
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=85311af13c614fb399b427847693712a&center={LON},{LAT}&level=10", recenter:'coords', live:null, basemap:'gray',
   detail:"Serving water system and its compliance with drinking-water standards.",
   impact:{health:{level:'Moderate',why:"Water quality directly affects health."},
           property:{level:'Low',why:"Persistent violations can weigh on value."},

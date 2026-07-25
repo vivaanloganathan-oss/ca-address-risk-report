@@ -840,6 +840,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open waste-map-open" type="button" data-waste-map="19">Open map</button>`
             : f.n === 20
               ? `<button class="rk-link map-open sewage-map-open" type="button" data-sewage-map="20">Open map</button>`
+            : f.n === 21
+              ? `<button class="rk-link map-open water-standard-map-open" type="button" data-water-standard-map="21">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1538,6 +1540,29 @@ function openSewageMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openWaterStandardMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "Drinking Water Standard Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Water standard screening map</div>
+      <div class="detail-desc">ArcGIS drinking water standard map centered on ${esc(addr)}. Use this to screen water-system context and verify current compliance details with the water provider and official state records.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="85311af13c614fb399b427847693712a" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.2171545" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=85311af13c614fb399b427847693712a&center=${center}&level=10" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Drinking water standard map. Informational screening only; verify current water-system status and compliance with official agency records.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1776,6 +1801,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openSewageMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .water-standard-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openWaterStandardMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
