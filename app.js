@@ -826,7 +826,9 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
-                : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
+                : [34,40,41].includes(f.n)
+                  ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
+                  : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -1307,6 +1309,26 @@ function impactBlock(label, item){
 }
 
 
+function openTransportationMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Transportation Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Transportation access map</div>
+      <div class="detail-desc">ArcGIS transportation map centered on ${esc(addr)}.</div>
+      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="71ddafc58fa745b1800f26f3ab8fa605" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="288895.277144" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=71ddafc58fa745b1800f26f3ab8fa605&center=${center}&level=11" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Transportation map. Informational screening only; verify routes, commute times, and service levels with official transit/transportation sources.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openLiquefactionMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1473,6 +1495,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openTsunamiMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .transportation-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openTransportationMapModal();
     });
   });
 }
