@@ -832,6 +832,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open wells-map-open" type="button" data-wells-map="14">Open map</button>`
             : f.n === 15
               ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
+            : [17,18].includes(f.n)
+              ? `<button class="rk-link map-open mines-map-open" type="button" data-mines-map="${f.n}">Open map</button>`
               : f.n === 46
                 ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
               : f.n === 47
@@ -1437,6 +1439,30 @@ function openTransportationMapModal(){
   $('#xmodal').classList.remove('hidden');
 }
 
+function openMinesMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Mines Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Mines and mineral resources map</div>
+      <div class="detail-desc">ArcGIS mines map centered on ${esc(addr)}. Use this to review active and historic mine context near the address.</div>
+      <div class="arcgis-location-wrap">
+        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="b51d03a1b7744a0b87b7b7c82a43bbcb" theme="light" bookmarks-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=b51d03a1b7744a0b87b7b7c82a43bbcb&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+        <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/mol/index.html" target="_blank" rel="noopener">Open official mines map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Mines map. Informational screening only; verify mine status, boundaries, and records with official state sources.';
+  $('#xmodal').classList.remove('hidden');
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1647,6 +1673,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openNplMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .mines-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openMinesMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
