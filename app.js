@@ -2869,7 +2869,7 @@ async function analyze(){
     safe(withTimeout(epaSuperfundNpl(st.lat, st.lon), 12000, 'EPA NPL'), 'EPA NPL'),
     safe(withTimeout(cgsTsunami(st.lat, st.lon), 9000, 'CGS tsunami'), 'CGS tsunami'),
     safe(withTimeout(overpassAmenities(st), 32000, 'OpenStreetMap amenities'), 'OpenStreetMap amenities'),
-    safe(withTimeout(localEnvironment(st.lat, st.lon), 16000, 'Environment'), 'Environment')
+    safe(localEnvironment(st.lat, st.lon), 'Environment')
   ]);
   if(runId !== ANALYZE_RUN) return;
   setPageLoading(true, 'Rendering the final report...');
