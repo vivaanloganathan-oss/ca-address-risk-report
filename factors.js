@@ -59,7 +59,7 @@ const FACTORS = [
           insurance:{level:'Moderate',why:"Earth-movement is often excluded or costly to cover."}}},
 
  {n:8, cat:"Flood", name:"FEMA Flood Zone",
-  map:"https://hazards-fema.maps.arcgis.com/apps/webappviewer/index.html?id=5852ea902db44e55bfce395799315f9c&find={ADDR}", recenter:'addr', live:'fema', basemap:'imagery', alt:"https://msc.fema.gov/portal/search?AddressQuery={ADDR}",
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=67df7697c0e34272b41b7f9b25c5e0eb&center={LON},{LAT}&level=14&legend=true", recenter:'addr', live:'fema', basemap:'imagery', alt:"https://msc.fema.gov/portal/search?AddressQuery={ADDR}",
   detail:"FEMA flood zone at the exact point. SFHAs (A/AE/V) require flood insurance; Zone X is minimal.",
   impact:{health:{level:'NA',why:"No chronic health exposure."},
           property:{level:'Low',why:"A flood-zone location lowers value and resale."},

@@ -938,6 +938,8 @@ function renderSummaryTable(st, liveResults){
           ? `<button class="rk-link map-open liquefaction-map-open" type="button" data-liquefaction-map="6">Open map</button>`
           : f.n === 7
             ? `<button class="rk-link map-open landslide-map-open" type="button" data-landslide-map="7">Open map</button>`
+            : f.n === 8
+              ? `<button class="rk-link map-open fema-flood-map-open" type="button" data-fema-flood-map="8">Open map</button>`
             : f.n === 9
               ? `<button class="rk-link map-open dams-map-open" type="button" data-dams-map="9">Open map</button>`
             : f.n === 10
@@ -1513,6 +1515,29 @@ function arcgisViewerUrl(itemId, center, scale){
 function arcgisIframe(itemId, center, scale, title){
   const src = arcgisViewerUrl(itemId, center, scale);
   return `<iframe class="arcgis-factor-map" style="height:600px;width:100%;" allow="local-network-access; geolocation" title="${esc(title || 'ArcGIS map')}" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+}
+
+function openFemaFloodMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  $("#xmodalTitle").textContent = "FEMA Flood Zone Map";
+  $("#xmodalBody").innerHTML = "<div class=\"detail-modal fault-map-modal\">" +
+    "<div class=\"detail-section no-top\">" +
+      "<div class=\"detail-section-title\">FEMA flood map</div>" +
+      "<div class=\"detail-desc\">ArcGIS FEMA flood map centered on " + esc(addr) + ". Use this with the live FEMA point result as a screening view.</div>" +
+      "<div class=\"arcgis-location-wrap\">" +
+        arcgisIframe("67df7697c0e34272b41b7f9b25c5e0eb", center, "36111.909643", "FEMA flood map") +
+        arcgisLocationOverlay(addr) +
+      "</div>" +
+      "<div class=\"detail-actions\">" +
+        "<a class=\"btn ghost detail-map\" href=\"" + arcgisViewerUrl("67df7697c0e34272b41b7f9b25c5e0eb", center, "36111.909643") + "\" target=\"_blank\" rel=\"noopener\">Open full ArcGIS map ↗</a>" +
+      "</div>" +
+    "</div>" +
+  "</div>";
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "FEMA flood map. Informational screening only; verify parcel-level flood status with FEMA or local floodplain officials.";
+  $("#xmodal").classList.remove("hidden");
 }
 
 function openFireHazardMapModal(){
@@ -2178,6 +2203,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openLandslideMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .fema-flood-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openFemaFloodMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .dams-map-open').forEach(btn=>{
