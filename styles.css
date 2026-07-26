@@ -476,3 +476,10 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .generic-source-note{font-size:12px;color:var(--muted);line-height:1.45;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .generic-map-empty{display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:var(--muted);text-align:center;font-weight:700}
 @media(max-width:760px){.generic-source-map{height:520px}}
+
+.student-support{max-width:780px;margin:0 0 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);border-radius:18px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 48px rgba(0,0,0,.16)}
+.student-support-title{color:#fff;font-weight:900;font-size:13px;letter-spacing:.2px;margin-bottom:5px}
+.student-support p{margin:0;color:#d7e3f5;font-size:12.5px;line-height:1.5}
+.student-support-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:12px;background:#2f6df6;color:#fff;text-decoration:none;font-weight:900;white-space:nowrap;box-shadow:0 12px 28px rgba(47,109,246,.32)}
+.student-support-btn:hover{background:#255dde}
+@media(max-width:760px){.student-support{grid-template-columns:1fr}.student-support-btn{width:100%}}
