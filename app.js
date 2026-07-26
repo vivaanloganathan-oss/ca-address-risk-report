@@ -898,6 +898,12 @@ function communityCrimeMapUrl(st){
   return `https://www.communitycrimemap.com/?type=address&address=${addr}&x=${lon}&y=${lat}`;
 }
 
+function factorMapUrl(f, st){
+  if(!f) return '';
+  if(f.n === 3) return communityCrimeMapUrl(st || STATE);
+  return fill(f.map || '', st || STATE || {});
+}
+
 function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
@@ -915,13 +921,13 @@ function renderSummaryTable(st, liveResults){
       <div class="inline-explain hidden" id="explain-${f.n}" data-name="${f.name}" data-srcs="${imgs.join('|')}"></div>`;
   };
   SUMMARY_ITEMS = {};
-  const rows = FACTORS.map((f, displayIndex)=>{
+  const rows = FACTORS.map((f)=>{
     const cat = f.cat || 'Other';
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
-    const mapUrl = f.n === 3 ? communityCrimeMapUrl(st) : fill(f.map, st);
+    const mapUrl = factorMapUrl(f, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
     const mapAction = f.n === 3
       ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
@@ -986,7 +992,6 @@ function renderSummaryTable(st, liveResults){
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
     return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
-      <td class="num">${displayIndex + 1}</td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
@@ -994,10 +999,10 @@ function renderSummaryTable(st, liveResults){
     </tr>`;
   }).join('');
   $('#summaryTable').innerHTML =
-    `<colgroup><col class="c-num"><col class="c-fac"><col class="c-what">
+    `<colgroup><col class="c-fac"><col class="c-what">
        <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
      <thead><tr>
-       <th>#</th><th>Factor</th><th>What it is</th>
+       <th>Factor</th><th>What it is</th>
        <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
      </tr></thead><tbody>${rows}</tbody>`;
   buildGlanceControls();
@@ -3231,11 +3236,11 @@ async function makePDF(){
     doc.text('HEALTH', M+314, y+13);
     doc.text('PROPERTY', M+376, y+13);
     doc.text('INSURANCE', M+454, y+13);
-    doc.text('LINK', M+512, y+13);
+    doc.text('MAP', M+512, y+13);
     y+=24;
   };
   appendixHeader();
-  FACTORS.forEach((f, displayIndex)=>{
+  FACTORS.forEach((f)=>{
     const cat = f.cat || 'Other';
     const lv=live[f.n]; const rk=riskKey(lv&&lv.label); const col=PDFRC[rk];
     const detail=(lv&&lv.desc)?lv.desc:f.detail;
@@ -3246,7 +3251,7 @@ async function makePDF(){
     doc.setDrawColor(238,242,247); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,rowH,5,5,'FD');
     doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,3,rowH-2,'F');
     doc.setFont('helvetica','bold'); doc.setFontSize(8.7); doc.setTextColor(20,28,46);
-    doc.text(`#${displayIndex + 1} ${f.name}`, M+10, y+14);
+    doc.text(doc.splitTextToSize(f.name, 190), M+10, y+14);
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
     doc.text(desc, M+10, y+25);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(43,57,77);
@@ -3255,8 +3260,50 @@ async function makePDF(){
     levelTag(M+376, y+10, im.property.level);
     levelTag(M+454, y+10, im.insurance.level);
     doc.setTextColor(59,110,165); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-    doc.textWithLink('Open', M+512, y+15, {url:fill(f.map,STATE)});
+    const factorUrl = factorMapUrl(f, STATE);
+    if(factorUrl) doc.textWithLink('Open', M+512, y+15, {url:factorUrl});
+    else doc.text('n/a', M+512, y+15);
     y += rowH+6;
+  });
+
+  /* ---- Map views and source appendix ---- */
+  doc.addPage(); y=M+6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
+  doc.text('Map Views & Sources', M, y); y+=8;
+  doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=16;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
+  doc.text(doc.splitTextToSize('The address map preview is embedded in this PDF. Interactive agency maps and provider source views cannot run inside a PDF, so every factor source is included below as a clickable reference for verification.', CW), M, y); y+=32;
+  const miniMapW=CW, miniMapH=160;
+  if(imgs.map){
+    doc.addImage(imgs.map,'PNG',M,y,miniMapW,miniMapH);
+  }else{
+    doc.setFillColor(239,246,255); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,miniMapW,miniMapH,8,8,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(49,112,246);
+    doc.text('Embedded address map preview unavailable', M+14, y+28);
+  }
+  doc.setDrawColor(49,112,246); doc.setLineWidth(1.2); doc.rect(M,y,miniMapW,miniMapH); doc.setLineWidth(1); y+=miniMapH+18;
+  const sourceHeader=()=>{
+    doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,20,5,5,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
+    doc.text('FACTOR', M+10, y+13);
+    doc.text('CATEGORY', M+260, y+13);
+    doc.text('SOURCE', M+420, y+13);
+    y+=25;
+  };
+  sourceHeader();
+  FACTORS.forEach(f=>{
+    const cat=f.cat || 'Other';
+    const url=factorMapUrl(f, STATE);
+    if(y+30 > H-56){ doc.addPage(); y=M+6; sourceHeader(); }
+    doc.setDrawColor(238,242,247); doc.line(M,y+24,W-M,y+24);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.4); doc.setTextColor(20,28,46);
+    doc.text(doc.splitTextToSize(f.name, 230), M+10, y+10);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.7); doc.setTextColor(90,107,128);
+    doc.text(doc.splitTextToSize(cat, 138), M+260, y+10);
+    doc.setFont('helvetica','bold'); doc.setTextColor(49,112,246);
+    if(url) doc.textWithLink('Open map/source', M+420, y+10, {url});
+    else doc.text('No source URL', M+420, y+10);
+    y+=30;
   });
 
   /* ---- footer ---- */
