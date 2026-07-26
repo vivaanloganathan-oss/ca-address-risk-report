@@ -204,7 +204,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v25-crimemapping-location-mapshot'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v26-crimescore-proxy'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -404,7 +404,7 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 
 app.get('/', (req, res) => res.send(
   `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
-  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
+  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/air-pollution?lat=<lat>&lon=<lon> | /api/crime-score?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
 ));
 
 app.get('/healthz', (req, res) => res.send('ok'));
@@ -464,6 +464,37 @@ app.get('/api/air-pollution', async (req, res) => {
     res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
   } catch (e) {
     res.status(502).json({ error: 'openweather_air_pollution_failed', detail: String(e.message || e), server: SERVER_VERSION });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
+
+app.get('/api/crime-score', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon ?? req.query.lng);
+  const key = String(process.env.CRIMESCORE_API_KEY || '').trim();
+  const base = String(process.env.CRIMESCORE_API_BASE || 'https://api.crimescore.io').replace(/\/+$/, '');
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return res.status(400).json({ error: 'missing_or_invalid_lat_lon' });
+  }
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    return res.status(400).json({ error: 'coordinates_out_of_range' });
+  }
+  if (!key) {
+    return res.status(503).json({ error: 'crimescore_key_not_configured', hint: 'Set CRIMESCORE_API_KEY in Render environment variables.' });
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const path = base.endsWith('/v1') ? '/score' : '/v1/score';
+    const url = `${base}${path}?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lon)}`;
+    const upstream = await fetch(url, { headers: { 'x-api-key': key }, signal: controller.signal });
+    const text = await upstream.text();
+    res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
+  } catch (e) {
+    res.status(502).json({ error: 'crimescore_lookup_failed', detail: String(e.message || e), server: SERVER_VERSION });
   } finally {
     clearTimeout(timer);
   }

@@ -659,10 +659,63 @@ async function fetchCrimeSafetyElements(st){
   return null;
 }
 
+function crimeScoreRisk(score){
+  const safety = Number(score);
+  if(!Number.isFinite(safety)) return null;
+  const riskScore = Math.max(0, Math.min(10, Math.round((100 - safety) / 10)));
+  const label = safety >= 85 ? 'No Risk'
+    : safety >= 65 ? 'Low Risk'
+    : safety >= 45 ? 'Moderate Risk'
+    : 'High Risk';
+  return {label, riskScore};
+}
+
+function crimeScoreResult(st, data){
+  const safety = Number(data && (data.safety_score ?? data.safetyScore ?? data.score));
+  const risk = crimeScoreRisk(safety);
+  if(!risk) return null;
+  const grade = data.safety_grade || data.safetyGrade || '';
+  const c = data.components || {};
+  const parts = [
+    ['violent', c.violent_crime], ['property', c.property_crime],
+    ['disorder', c.disorder], ['frequency', c.frequency]
+  ].filter(([,v]) => Number.isFinite(Number(v)))
+    .map(([k,v]) => `${k} ${Number(v).toFixed(0)}/100`);
+  const geo = data.geoid ? ` Census block group ${data.geoid}.` : '';
+  const model = data.data && data.data.model_version ? ` Model ${data.data.model_version}.` : '';
+  const desc = `Live CrimeScore modeled neighborhood safety score: ${safety.toFixed(0)}/100${grade ? ` (grade ${grade})` : ''}.${parts.length ? ` Components: ${parts.join(', ')}.` : ''}${geo}${model}`;
+  const impactLevel = risk.label.replace(' Risk', '');
+  return {
+    label: risk.label,
+    score: risk.riskScore,
+    desc,
+    impacts:{
+      health: IMP(impactLevel === 'No' ? 'No' : impactLevel, impactLevel === 'No' ? 'CrimeScore indicates a high safety score for this location.' : 'CrimeScore indicates elevated personal-safety context; verify with local law-enforcement data.'),
+      property: IMP(impactLevel === 'No' ? 'No' : impactLevel, 'Neighborhood safety perception can affect buyer demand and livability confidence.'),
+      insurance: IMP(impactLevel === 'High' ? 'Moderate' : impactLevel === 'Moderate' ? 'Low' : 'Low', 'Insurance pricing may consider broader theft, vandalism, and claims context; verify with carriers.')
+    }
+  };
+}
+
+async function crimeScoreApi(st){
+  const base = mapshotBase();
+  if(!base) return null;
+  try{
+    const res = await fetchWithAbort(`${base}/api/crime-score?lat=${encodeURIComponent(st.lat)}&lon=${encodeURIComponent(st.lon)}`, {}, 12000);
+    if(!res.ok) return null;
+    const data = await res.json();
+    return crimeScoreResult(st, data);
+  }catch(e){ return null; }
+}
+
 async function crimeSafety(st){
+  const scored = await crimeScoreApi(st);
+  if(scored) return scored;
   const elements = await fetchCrimeSafetyElements(st);
   if(!elements) return null;
-  return crimeSafetyResult(st, elements);
+  const fallback = crimeSafetyResult(st, elements);
+  if(fallback) fallback.desc = `${fallback.desc} CrimeScore API was unavailable, so this row is using the public-safety access fallback.`;
+  return fallback;
 }
 
 async function localEnvironment(lat, lon){
