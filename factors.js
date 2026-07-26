@@ -186,7 +186,7 @@ const FACTORS = [
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  {n:27, cat:"Overall Pollution", name:"Air Pollution (PM2.5)",
-  map:"https://www.baaqmd.gov/en/about-air-quality/interactive-data-maps", recenter:'search', live:null, basemap:'gray', alt:"https://map.purpleair.com/1/mAQI/a10/p604800/cC0#13/{LAT}/{LON}",
+  map:"https://www.arcgis.com/apps/mapviewer/index.html?configurableview=true&webmap=f866b483d07f470e883d87feba202e96&theme=light&bookmarks=true&heading=true&legend=true&information=true&basemaps=true&center={LON},{LAT}&scale=288895.277144", recenter:'coords', live:null, basemap:'gray', alt:"https://map.purpleair.com/1/mAQI/a10/p604800/cC0#13/{LAT}/{LON}",
   detail:"Fine-particulate air quality near the address, including wildfire-smoke episodes.",
   impact:{health:{level:'Moderate',why:"Particulates affect respiratory and cardiac health."},
           property:{level:'Low',why:"Poor air quality can soften demand."},

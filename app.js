@@ -953,6 +953,8 @@ function renderSummaryTable(st, liveResults){
               ? `<button class="rk-link map-open pesticide-map-open" type="button" data-pesticide-map="23">Open map</button>`
             : f.n === 24
               ? `<button class="rk-link map-open gas-station-map-open" type="button" data-gas-station-map="24">Open map</button>`
+            : f.n === 27
+              ? `<button class="rk-link map-open air-pollution-map-open" type="button" data-air-pollution-map="27">Open map</button>`
             : f.n === 29
               ? `<button class="rk-link map-open traffic-density-map-open" type="button" data-traffic-density-map="29">Open map</button>`
             : f.n === 30
@@ -1935,6 +1937,30 @@ function openGasStationMapModal(){
   $("#xmodal").classList.remove("hidden");
 }
 
+function openAirPollutionMapModal(){
+  if(!STATE) return;
+  const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
+  const addr = STATE.display || "the analyzed address";
+  const src = `https://www.arcgis.com/apps/mapviewer/index.html?configurableview=true&webmap=f866b483d07f470e883d87feba202e96&theme=light&bookmarks=true&heading=true&legend=true&information=true&basemaps=true&center=${center}&scale=288895.277144`;
+  $("#xmodalTitle").textContent = "Air Quality Map";
+  $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Air quality screening map</div>
+      <div class="detail-desc">ArcGIS air quality map centered on ${esc(addr)}. Use this with the live OpenWeather PM2.5/AQI result as a screening view.</div>
+      <div class="arcgis-location-wrap">
+        <iframe class="arcgis-factor-map" style="height:600px;width:100%;" allow="local-network-access; geolocation" title="Air quality" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        ${arcgisLocationOverlay(addr)}
+      </div>
+      <div class="detail-actions">
+        <a class="btn ghost detail-map" href="${src}" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+      </div>
+    </div>
+  </div>`;
+  const foot = $("#xmodalFoot");
+  if(foot) foot.textContent = "Air quality map. Informational screening only; verify current conditions with official air-quality sources.";
+  $("#xmodal").classList.remove("hidden");
+}
+
 function openTrailsMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -2201,6 +2227,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openGasStationMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .air-pollution-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openAirPollutionMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .tsunami-map-open').forEach(btn=>{
