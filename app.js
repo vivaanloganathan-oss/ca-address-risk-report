@@ -2047,7 +2047,7 @@ function openFactorModal(n){
         ${imgs.map((s,i)=>`<img src="${s}" loading="lazy" alt="${f.name} explanation ${i+1}"/>`).join('')}
        </div>`
     : `<div class="detail-empty">No explanation images are available for this factor yet.</div>`;
-  $('#xmodalTitle').textContent = `#${f.n} ${f.name}`;
+  $('#xmodalTitle').textContent = `${f.name}`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal">
     <div class="detail-head">
       <div>
@@ -2602,7 +2602,7 @@ function renderDrivers(){
   $('#driversTitle').textContent = `Top ${label.toLowerCase()} risk drivers`;
   $('#driversList').innerHTML = top.map(x=>
     `<div class="driver" data-n="${x.n}" title="Jump to this factor in the summary table">
-       <span class="d-name">#${x.n} ${x.name} ${evidenceBadge(x.evidence)}</span>
+       <span class="d-name">${x.name} ${evidenceBadge(x.evidence)}</span>
        ${lvlPill(x.level)}<span class="d-why">${x.why}</span></div>`).join('');
   document.querySelectorAll('#driversList .driver').forEach(el=>el.addEventListener('click',()=>{
     const row=document.getElementById('sumrow-'+el.dataset.n);
@@ -2613,7 +2613,7 @@ function renderOverall(liveResults){
   RISK = computeRisk(liveResults);
   const driverHTML = x =>
     `<div class="driver" data-n="${x.n}" title="Jump to this factor in the summary table">
-       <span class="d-name">#${x.n} ${x.name} ${evidenceBadge(x.evidence)}</span>
+       <span class="d-name">${x.name} ${evidenceBadge(x.evidence)}</span>
        ${lvlPill(x.level)}<span class="d-why">${x.why}</span></div>`;
   const items = RISK.overall.items;
   const pick = lvl => [...items].filter(x=>x.level===lvl)
