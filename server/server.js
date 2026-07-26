@@ -204,7 +204,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v29-revert-airnow'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v30-air-weather-proxy'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -404,7 +404,7 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 
 app.get('/', (req, res) => res.send(
   `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
-  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/air-pollution?lat=<lat>&lon=<lon> | /api/crime-score?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
+  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/weather?lat=<lat>&lon=<lon> | /api/open-meteo-air?lat=<lat>&lon=<lon> | /api/air-pollution?lat=<lat>&lon=<lon> | /api/crime-score?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
 ));
 
 app.get('/healthz', (req, res) => res.send('ok'));
@@ -439,6 +439,54 @@ app.post('/api/stats/download', async (req, res) => {
   }
 });
 
+
+
+function validLatLon(req, res) {
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    res.status(400).json({ error: 'missing_or_invalid_lat_lon' });
+    return null;
+  }
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    res.status(400).json({ error: 'coordinates_out_of_range' });
+    return null;
+  }
+  return { lat, lon };
+}
+
+async function proxyJson(res, url, timeoutMs, errorCode) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const upstream = await fetch(url, { signal: controller.signal });
+    const text = await upstream.text();
+    res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
+  } catch (e) {
+    res.status(502).json({ error: errorCode, detail: String(e.message || e), server: SERVER_VERSION });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+app.get('/api/weather', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const point = validLatLon(req, res);
+  if (!point) return;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(point.lat)}&longitude=${encodeURIComponent(point.lon)}`
+    + `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code`
+    + `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+  await proxyJson(res, url, 10000, 'open_meteo_weather_failed');
+});
+
+app.get('/api/open-meteo-air', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const point = validLatLon(req, res);
+  if (!point) return;
+  const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${encodeURIComponent(point.lat)}&longitude=${encodeURIComponent(point.lon)}`
+    + `&current=us_aqi,pm2_5,ozone&timezone=auto`;
+  await proxyJson(res, url, 10000, 'open_meteo_air_quality_failed');
+});
 
 
 app.get('/api/air-pollution', async (req, res) => {

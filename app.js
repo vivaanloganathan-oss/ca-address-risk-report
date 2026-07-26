@@ -719,14 +719,16 @@ async function crimeSafety(st){
 }
 
 async function localEnvironment(lat, lon){
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+  const serverBase = mapshotBase();
+  const directWeatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
     + `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code`
     + `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
-  const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}`
+  const directAirUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}`
     + `&current=us_aqi,pm2_5,ozone&timezone=auto`;
+  const weatherUrl = serverBase ? `${serverBase}/api/weather?lat=${lat}&lon=${lon}` : directWeatherUrl;
+  const airUrl = serverBase ? `${serverBase}/api/open-meteo-air?lat=${lat}&lon=${lon}` : directAirUrl;
   const cfg = window.APP_CONFIG || {};
   const owKey = cfg.OPENWEATHER_AIR_KEY || cfg.OPENWEATHER_KEY || "";
-  const serverBase = mapshotBase();
   const owUrl = serverBase
     ? `${serverBase}/api/air-pollution?lat=${lat}&lon=${lon}`
     : owKey
@@ -739,9 +741,14 @@ async function localEnvironment(lat, lon){
       return res.ok ? await res.json() : null;
     }catch(e){ return null; }
   };
+  const withFallback = async (primary, fallback, primaryMs=11000, fallbackMs=9000) => {
+    const first = await optionalJson(primary, primaryMs);
+    if(first || !serverBase) return first;
+    return optionalJson(fallback, fallbackMs);
+  };
   const [weather, air, openWeatherAir] = await Promise.all([
-    optionalJson(weatherUrl, 9000),
-    optionalJson(airUrl, 9000),
+    withFallback(weatherUrl, directWeatherUrl),
+    withFallback(airUrl, directAirUrl),
     optionalJson(owUrl, 12000)
   ]);
   return {weather, air, openWeatherAir};
