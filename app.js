@@ -931,6 +931,8 @@ function renderSummaryTable(st, liveResults){
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
     const mapAction = f.n === 1
       ? `<button class="rk-link map-open address-profile-map-open" type="button" data-address-profile-map="1">Open map</button>`
+      : f.n === 2
+      ? `<button class="rk-link map-open school-map-open" type="button" data-school-map="2">Open map</button>`
       : f.n === 3
       ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
       : f.n === 5
@@ -1544,9 +1546,9 @@ function sourceReferencePanel(factorName, mapUrl){
   </div>`;
 }
 
-function locationMapPanel(id, mapUrl){
+function locationMapPanel(id, mapUrl, factorName){
   const addr = STATE && STATE.display ? STATE.display : 'the analyzed address';
-  const source = mapUrl ? sourceReferencePanel('Address & ZIP Profile', mapUrl) : '';
+  const source = mapUrl ? sourceReferencePanel(factorName || 'Address & ZIP Profile', mapUrl) : '';
   return `<div class="location-profile-panel">
     <div class="location-profile-address">${esc(addr)}</div>
     <div id="${id}" class="location-profile-map" role="img" aria-label="Map centered on ${esc(addr)}"></div>
@@ -1571,6 +1573,68 @@ function initLocationProfileMap(id){
   setTimeout(()=>map.invalidateSize(), 100);
 }
 
+async function initSchoolZonesMap(){
+  if(!STATE || typeof L === 'undefined') return;
+  const el = document.getElementById('schoolZonesMap');
+  const status = document.getElementById('schoolMapStatus');
+  if(!el || el.dataset.ready === '1') return;
+  const lat = Number(STATE.lat);
+  const lon = Number(STATE.lon);
+  if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+    el.innerHTML = '<div class="location-map-empty">Location coordinates are unavailable for this map.</div>';
+    if(status) status.textContent = 'School map could not be centered because coordinates are unavailable.';
+    return;
+  }
+  el.dataset.ready = '1';
+  const map = L.map(el, {scrollWheelZoom:true}).setView([lat, lon], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+  const addressMarker = L.marker([lat, lon]).addTo(map).bindPopup(esc(STATE.display || 'Selected location')).openPopup();
+  L.circle([lat, lon], {radius:3219, color:'#2f6df6', weight:2, opacity:0.85, fillColor:'#2f6df6', fillOpacity:0.08}).addTo(map);
+  setTimeout(()=>map.invalidateSize(), 100);
+
+  const endpoints = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  let elements = null;
+  for(const endpoint of endpoints){
+    try{
+      const res = await fetchWithAbort(endpoint, {method:'POST', body:new URLSearchParams({data:schoolAccessQuery(lat, lon)})}, 14000);
+      if(!res.ok) continue;
+      const j = await res.json();
+      elements = j.elements || [];
+      break;
+    }catch(e){}
+  }
+
+  if(!elements){
+    if(status) status.textContent = 'Nearby school markers could not be loaded from OpenStreetMap. Verify assigned schools and ratings with the district or GreatSchools.';
+    return;
+  }
+
+  const seen = new Set();
+  const markers = [];
+  elements.forEach(e=>{
+    const p = schoolElementPoint(e);
+    if(!p) return;
+    const tags = e.tags || {};
+    const name = tags.name || tags.operator || 'Mapped school';
+    const key = `${e.type || 'n'}-${e.id || name}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    const dist = distanceMiles(lat, lon, p.lat, p.lon);
+    const marker = L.circleMarker([p.lat, p.lon], {radius:7, color:'#14532d', weight:2, fillColor:'#22c55e', fillOpacity:0.82})
+      .addTo(map)
+      .bindPopup(`<strong>${esc(name)}</strong><br>${dist.toFixed(dist < 1 ? 2 : 1)} miles from address`);
+    markers.push(marker);
+  });
+
+  if(markers.length){
+    const group = L.featureGroup(markers.concat([addressMarker]));
+    map.fitBounds(group.getBounds().pad(0.2), {maxZoom:15});
+    if(status) status.textContent = `Showing ${markers.length} mapped school site(s) within 2 miles. This is an access proxy, not an official assignment or rating.`;
+  }else if(status){
+    status.textContent = 'No mapped school sites were returned within 2 miles. Verify assigned schools and ratings with the district or GreatSchools.';
+  }
+}
+
 function openAddressProfileMapModal(){
   if(!STATE) return;
   const item = SUMMARY_ITEMS[1] || {};
@@ -1582,13 +1646,35 @@ function openAddressProfileMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">Searched location</div>
       <div class="detail-desc">Map centered on ${esc(addr)}.</div>
-      ${locationMapPanel('addressProfileMap', mapUrl)}
+      ${locationMapPanel('addressProfileMap', mapUrl, 'Address & ZIP Profile')}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'Address map and ZIP reference. Informational screening only.';
   $('#xmodal').classList.remove('hidden');
   setTimeout(()=>initLocationProfileMap('addressProfileMap'), 100);
+}
+
+function openSchoolMapModal(){
+  if(!STATE) return;
+  const item = SUMMARY_ITEMS[2] || {};
+  const f = item.f || {name:'School Zones & Ratings'};
+  const mapUrl = item.mapUrl || fill(f.map || '', STATE);
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'School Zones & Ratings Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Nearby school access map</div>
+      <div class="detail-desc">OpenStreetMap school-access map centered on ${esc(addr)}. It shows mapped school sites near the address when OpenStreetMap responds; verify official school assignments and ratings with the district or GreatSchools.</div>
+      <div id="schoolZonesMap" class="location-profile-map" role="img" aria-label="School access map centered on ${esc(addr)}"></div>
+      <div id="schoolMapStatus" class="fault-map-status">Loading nearby mapped schools...</div>
+      ${sourceReferencePanel('School Zones & Ratings', mapUrl)}
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'School access map. Informational screening only; verify assigned school zones and ratings with official school sources.';
+  $('#xmodal').classList.remove('hidden');
+  setTimeout(()=>initSchoolZonesMap(), 100);
 }
 
 function openFireHazardMapModal(){
@@ -2139,12 +2225,18 @@ function openGenericMapModal(n){
   const mapUrl = item.mapUrl || fill(f.map || '', STATE);
   const addr = STATE.display || 'the analyzed address';
   $('#xmodalTitle').textContent = `${f.name || 'Factor'} Map`;
+  const fallbackMapId = `genericFactorMap-${Number(f.n || n) || 'x'}`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal map-reference-modal">
-    ${sourceReferencePanel(f.name || 'Factor', mapUrl)}
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Address-centered screening map</div>
+      <div class="detail-desc">Map centered on ${esc(addr)}. Use the reference link below to verify the official agency/source data for ${esc(f.name || 'this factor')}.</div>
+      ${locationMapPanel(fallbackMapId, mapUrl, f.name || 'Factor')}
+    </div>
   </div>`;
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'Informational screening only; verify details with the listed map/reference where needed.';
   $('#xmodal').classList.remove('hidden');
+  setTimeout(()=>initLocationProfileMap(fallbackMapId), 100);
 }
 
 function selectVisibleFactor(){
@@ -2169,6 +2261,13 @@ function wireSummaryRows(){
       e.preventDefault();
       e.stopPropagation();
       openAddressProfileMapModal();
+    });
+  });
+  document.querySelectorAll('#summaryTable .school-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openSchoolMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .generic-map-open').forEach(btn=>{
