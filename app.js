@@ -904,46 +904,6 @@ function factorMapUrl(f, st){
   return fill(f.map || '', st || STATE || {});
 }
 
-const SUMMARY_MAP_ROUTES = {
-  1: 'address-profile-map-open',
-  2: 'school-map-open',
-  3: 'crime-map-open',
-  5: 'map-embed-open',
-  6: 'liquefaction-map-open',
-  7: 'landslide-map-open',
-  9: 'dams-map-open',
-  10: 'streams-map-open',
-  11: 'fire-hazard-map-open',
-  13: 'pipeline-map-open',
-  14: 'wells-map-open',
-  15: 'npl-map-open',
-  17: 'mines-map-open',
-  19: 'waste-map-open',
-  20: 'sewage-map-open',
-  21: 'water-standard-map-open',
-  22: 'groundwater-map-open',
-  23: 'pesticide-map-open',
-  24: 'gas-station-map-open',
-  27: 'air-pollution-map-open',
-  29: 'traffic-density-map-open',
-  30: 'rail-tracks-map-open',
-  31: 'powerline-map-open',
-  32: 'noise-level-map-open',
-  33: 'airports-map-open',
-  35: 'park-ride-map-open',
-  36: 'cemeteries-map-open',
-  40: 'transportation-map-open',
-  41: 'transportation-map-open',
-  46: 'tsunami-map-open',
-  47: 'trails-map-open'
-};
-
-function summaryMapAction(f){
-  const route = SUMMARY_MAP_ROUTES[f.n];
-  if(route) return `<button class="rk-link map-open ${route}" type="button" data-map-factor="${f.n}">Open map</button>`;
-  return `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open map</button>`;
-}
-
 function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
@@ -969,7 +929,67 @@ function renderSummaryTable(st, liveResults){
     const im=effImpact(f,live);
     const mapUrl = factorMapUrl(f, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
-    const mapAction = summaryMapAction(f);
+    const mapAction = f.n === 1
+      ? `<button class="rk-link map-open address-profile-map-open" type="button" data-address-profile-map="1">Open map</button>`
+      : f.n === 2
+      ? `<button class="rk-link map-open school-map-open" type="button" data-school-map="2">Open map</button>`
+      : f.n === 3
+      ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
+      : f.n === 5
+        ? `<button class="rk-link map-open map-embed-open" type="button" data-fault-map="5">Open map</button>`
+        : f.n === 6
+          ? `<button class="rk-link map-open liquefaction-map-open" type="button" data-liquefaction-map="6">Open map</button>`
+          : f.n === 7
+            ? `<button class="rk-link map-open landslide-map-open" type="button" data-landslide-map="7">Open map</button>`
+            : f.n === 9
+              ? `<button class="rk-link map-open dams-map-open" type="button" data-dams-map="9">Open map</button>`
+            : f.n === 10
+              ? `<button class="rk-link map-open streams-map-open" type="button" data-streams-map="10">Open map</button>`
+            : f.n === 11
+              ? `<button class="rk-link map-open fire-hazard-map-open" type="button" data-fire-hazard-map="11">Open map</button>`
+            : f.n === 13
+              ? `<button class="rk-link map-open pipeline-map-open" type="button" data-pipeline-map="13">Open map</button>`
+            : f.n === 14
+              ? `<button class="rk-link map-open wells-map-open" type="button" data-wells-map="14">Open map</button>`
+            : f.n === 15
+              ? `<button class="rk-link map-open npl-map-open" type="button" data-npl-map="15">Open map</button>`
+            : f.n === 17
+              ? `<button class="rk-link map-open mines-map-open" type="button" data-mines-map="17">Open map</button>`
+            : f.n === 19
+              ? `<button class="rk-link map-open waste-map-open" type="button" data-waste-map="19">Open map</button>`
+            : f.n === 20
+              ? `<button class="rk-link map-open sewage-map-open" type="button" data-sewage-map="20">Open map</button>`
+            : f.n === 21
+              ? `<button class="rk-link map-open water-standard-map-open" type="button" data-water-standard-map="21">Open map</button>`
+            : f.n === 22
+              ? `<button class="rk-link map-open groundwater-map-open" type="button" data-groundwater-map="22">Open map</button>`
+            : f.n === 23
+              ? `<button class="rk-link map-open pesticide-map-open" type="button" data-pesticide-map="23">Open map</button>`
+            : f.n === 24
+              ? `<button class="rk-link map-open gas-station-map-open" type="button" data-gas-station-map="24">Open map</button>`
+            : f.n === 27
+              ? `<button class="rk-link map-open air-pollution-map-open" type="button" data-air-pollution-map="27">Open map</button>`
+            : f.n === 29
+              ? `<button class="rk-link map-open traffic-density-map-open" type="button" data-traffic-density-map="29">Open map</button>`
+            : f.n === 30
+              ? `<button class="rk-link map-open rail-tracks-map-open" type="button" data-rail-tracks-map="30">Open map</button>`
+            : f.n === 31
+              ? `<button class="rk-link map-open powerline-map-open" type="button" data-powerline-map="31">Open map</button>`
+            : f.n === 32
+              ? `<button class="rk-link map-open noise-level-map-open" type="button" data-noise-level-map="32">Open map</button>`
+            : f.n === 33
+              ? `<button class="rk-link map-open airports-map-open" type="button" data-airports-map="33">Open map</button>`
+            : f.n === 35
+              ? `<button class="rk-link map-open park-ride-map-open" type="button" data-park-ride-map="35">Open map</button>`
+            : f.n === 36
+              ? `<button class="rk-link map-open cemeteries-map-open" type="button" data-cemeteries-map="36">Open map</button>`
+              : f.n === 46
+                ? `<button class="rk-link map-open tsunami-map-open" type="button" data-tsunami-map="46">Open map</button>`
+              : f.n === 47
+                ? `<button class="rk-link map-open trails-map-open" type="button" data-trails-map="47">Open map</button>`
+                : [40,41].includes(f.n)
+                  ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
+                  : `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open map</button>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -1421,40 +1441,20 @@ function openCrimeMapModal(){
   if(!STATE) return;
   const url = communityCrimeMapUrl(STATE);
   const addr = STATE.display || 'the analyzed address';
-  const shotUrl = '';
   $('#xmodalTitle').textContent = 'Crime & Public Safety Map';
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
       <div class="detail-section-title">LexisNexis Community Crime Map</div>
-      <div class="detail-desc">${shotUrl ? `LexisNexis Community Crime Map opens reported-incident data from participating agencies. Use the address box below as the exact search target.` : `LexisNexis Community Crime Map opens reported-incident data from participating agencies. Search this exact address if the map does not auto-center.`}</div>
+      <div class="detail-desc">LexisNexis Community Crime Map opens reported-incident data from participating agencies. Search this exact address if the map does not auto-center.</div>
       <div class="crime-address-box">
         <span>${esc(addr)}</span>
         <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)}</small>
       </div>
-      ${shotUrl
-        ? `<div class="crime-shot-wrap">
-            <img id="crimeMapShot" class="crime-report-frame crime-report-shot" src="${shotUrl}" alt="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy">
-            <div class="crime-shot-loading">Loading LexisNexis crime map preview...</div>
-          </div>`
-        : `<iframe id="crimeMapDirectFrame" class="crime-report-frame" src="${url}" title="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`}
-      <div class="detail-actions">
-        <button class="btn primary detail-map" type="button" onclick="document.querySelector('#crimeMapDirectFrame')?.scrollIntoView({behavior:'smooth',block:'center'})">Crime map loaded below</button>
-      </div>
+      ${sourceReferencePanel('Crime & Public Safety', url)}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'LexisNexis Community Crime Map coverage depends on participating law-enforcement agencies. Informational screening only.';
-  const shot = $('#crimeMapShot');
-  if(shot){
-    shot.addEventListener('load', () => {
-      const loader = shot.parentElement && shot.parentElement.querySelector('.crime-shot-loading');
-      if(loader) loader.remove();
-    }, { once:true });
-    shot.addEventListener('error', () => {
-      const wrap = shot.parentElement;
-      if(wrap) wrap.innerHTML = `<iframe id="crimeMapDirectFrame" class="crime-report-frame" src="${url}" title="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
-    }, { once:true });
-  }
   $('#xmodal').classList.remove('hidden');
 }
 
@@ -1491,22 +1491,9 @@ function arcgisMapViewerUrl(webmap, center, scale){
 
 function arcgisMapFrame(webmap, center, scale, title){
   const src = arcgisMapViewerUrl(webmap, center, scale);
-  return `<iframe class="arcgis-factor-map" style="height:600px;width:100%;" allow="local-network-access; geolocation" title="${esc(title || 'ArcGIS map')}" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+  return sourceReferencePanel(title || 'ArcGIS map', src);
 }
 
-function embeddedMapFrame(src, title){
-  return `<iframe class="crime-report-frame" src="${src}" title="${esc(title || 'Map')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
-}
-
-function canEmbedMapUrl(url){
-  if(!url) return false;
-  try{
-    const u = new URL(url, window.location.href);
-    return u.hostname.endsWith('arcgis.com') && (/\/apps\/(mapviewer|webappviewer)\//.test(u.pathname) || /\/experience\//.test(u.pathname));
-  }catch(e){
-    return false;
-  }
-}
 
 function sourceReferencePanel(factorName, mapUrl){
   const addr = STATE && STATE.display ? STATE.display : 'the analyzed address';
@@ -2071,10 +2058,7 @@ function openAirPollutionMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">Air quality screening map</div>
       <div class="detail-desc">ArcGIS air quality map centered on ${esc(addr)}. Use this with the live OpenWeather PM2.5/AQI result as a screening view.</div>
-      <div class="arcgis-location-wrap">
-        <iframe class="arcgis-factor-map" style="height:600px;width:100%;" allow="local-network-access; geolocation" title="Air quality" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        ${arcgisLocationOverlay(addr)}
-      </div>
+      ${sourceReferencePanel('Air Quality', src)}
     </div>
   </div>`;
   const foot = $("#xmodalFoot");
@@ -2215,25 +2199,18 @@ function openGenericMapModal(n){
   const mapUrl = item.mapUrl || fill(f.map || '', STATE);
   const addr = STATE.display || 'the analyzed address';
   $('#xmodalTitle').textContent = `${f.name || 'Factor'} Map`;
-  const mapBody = canEmbedMapUrl(mapUrl)
-    ? `<div class="arcgis-location-wrap">
-        ${embeddedMapFrame(mapUrl, `${f.name || 'Factor'} map for ${addr}`)}
-        ${arcgisLocationOverlay(addr)}
-      </div>
-      ${sourceReferencePanel(f.name || 'Factor', mapUrl)}`
-    : sourceReferencePanel(f.name || 'Factor', mapUrl);
+  const fallbackMapId = `genericFactorMap-${Number(f.n || n) || 'x'}`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal map-reference-modal">
     <div class="detail-section no-top">
-      <div class="detail-section-title">${canEmbedMapUrl(mapUrl) ? 'Embedded map/source view' : 'Map/reference link'}</div>
-      <div class="detail-desc">${canEmbedMapUrl(mapUrl) ? `Map source for ${esc(f.name || 'this factor')} centered or searched for ${esc(addr)} when the provider supports it.` : `Use this map/reference to verify ${esc(f.name || 'this factor')} for ${esc(addr)}.`}</div>
-      ${mapBody}
+      <div class="detail-section-title">Address-centered screening map</div>
+      <div class="detail-desc">Map centered on ${esc(addr)}. Use the reference link below to verify the official agency/source data for ${esc(f.name || 'this factor')}.</div>
+      ${locationMapPanel(fallbackMapId, mapUrl, f.name || 'Factor')}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = canEmbedMapUrl(mapUrl)
-    ? 'Embedded map/source view. Informational screening only; verify with the official source where needed.'
-    : 'Informational screening only; open the listed map/reference to verify details with the source.';
+  if(foot) foot.textContent = 'Informational screening only; verify details with the listed map/reference where needed.';
   $('#xmodal').classList.remove('hidden');
+  setTimeout(()=>initLocationProfileMap(fallbackMapId), 100);
 }
 
 function selectVisibleFactor(){
