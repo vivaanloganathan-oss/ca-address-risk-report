@@ -2664,7 +2664,7 @@ function renderDrivers(){
   $('#driversTitle').textContent = `Top ${label.toLowerCase()} risk drivers`;
   $('#driversList').innerHTML = top.map(x=>
     `<div class="driver" data-n="${x.n}" title="Jump to this factor in the summary table">
-       <span class="d-name">#${x.n} ${x.name} ${evidenceBadge(x.evidence)}</span>
+       <span class="d-name">${x.name} ${evidenceBadge(x.evidence)}</span>
        ${lvlPill(x.level)}<span class="d-why">${x.why}</span></div>`).join('');
   document.querySelectorAll('#driversList .driver').forEach(el=>el.addEventListener('click',()=>{
     const row=document.getElementById('sumrow-'+el.dataset.n);
@@ -2675,7 +2675,7 @@ function renderOverall(liveResults){
   RISK = computeRisk(liveResults);
   const driverHTML = x =>
     `<div class="driver" data-n="${x.n}" title="Jump to this factor in the summary table">
-       <span class="d-name">#${x.n} ${x.name} ${evidenceBadge(x.evidence)}</span>
+       <span class="d-name">${x.name} ${evidenceBadge(x.evidence)}</span>
        ${lvlPill(x.level)}<span class="d-why">${x.why}</span></div>`;
   const items = RISK.overall.items;
   const pick = lvl => [...items].filter(x=>x.level===lvl)
@@ -3176,13 +3176,11 @@ async function makePDF(){
     doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(x,yy,w,29,6,6,'FD');
     doc.setFillColor(...accent); doc.rect(x,yy+1,3,27,'F');
     doc.setFont('helvetica','bold'); doc.setFontSize(8.6); doc.setTextColor(20,28,46);
-    doc.text(doc.splitTextToSize(`#${item.n} ${item.name}`, 118), x+10, yy+17);
+    doc.text(doc.splitTextToSize(`${item.name}`, 118), x+10, yy+17);
     const chipW = riskChip(x+126, yy+7, item.level);
     doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(90,107,128);
     doc.text(doc.splitTextToSize(item.why || '', Math.max(60, w-146-chipW)), x+132+chipW, yy+12);
   };
-  sectionLabel('Top risks in this area', M, y);
-  y+=24;
   const colGap=14, colW=(CW-colGap)/2;
   sectionLabel('Top high-risk factors', M, y);
   sectionLabel('Top moderate-risk factors', M+colW+colGap, y);
