@@ -987,7 +987,7 @@ function renderSummaryTable(st, liveResults){
                 ? `<button class="rk-link map-open trails-map-open" type="button" data-trails-map="47">Open map</button>`
                 : [40,41].includes(f.n)
                   ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
-                  : `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open source</button>`;
+                  : `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open map</button>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -1534,7 +1534,7 @@ function sourceReferencePanel(factorName, mapUrl){
         <div class="source-reference-kicker">Official source</div>
         <div class="source-reference-factor">${esc(factorName || 'Source')}</div>
       </div>
-      ${href ? `<a class="source-reference-btn" href="${esc(href)}" target="_blank" rel="noopener">Open source</a>` : ''}
+      ${href ? `<a class="source-reference-btn" href="${esc(href)}" target="_blank" rel="noopener">Open map</a>` : ''}
     </div>
     <div class="source-reference-address">${esc(addr)}</div>
     <p>Use this source to verify the agency data for the analyzed address.</p>
@@ -3350,7 +3350,7 @@ async function makePDF(){
     doc.setFont('helvetica','normal'); doc.setFontSize(7.7); doc.setTextColor(90,107,128);
     doc.text(doc.splitTextToSize(cat, 138), M+260, y+10);
     doc.setFont('helvetica','bold'); doc.setTextColor(49,112,246);
-    if(url) doc.textWithLink('Open map/source', M+420, y+10, {url});
+    if(url) doc.textWithLink('Open map', M+420, y+10, {url});
     else doc.text('No source URL', M+420, y+10);
     y+=30;
   });
