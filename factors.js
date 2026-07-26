@@ -324,7 +324,14 @@ const FACTORS = [
   detail:"ArcGIS trail and outdoor-access map centered on the searched address; use it to review nearby trail networks and recreation access.",
   impact:{health:{level:'No',why:"Trail access can support walking, recreation, and outdoor activity; not a hazard by itself."},
           property:{level:'Low',why:"Nearby trails and open-space access can support livability and buyer appeal."},
-          insurance:{level:'NA',why:"Trail access is not a standard insurance-pricing factor."}}}
+          insurance:{level:'NA',why:"Trail access is not a standard insurance-pricing factor."}}},
+
+ {n:48, cat:"Meat Production", name:"Meat Production",
+  map:"https://www.caregenmeat.net/mapviewer.html", recenter:'search', live:null, basemap:'gray',
+  detail:"Meat-production and animal-agriculture facility map reference. Use this source to screen nearby processing, feedlot, or animal-agriculture context where mapped data is available.",
+  impact:{health:{level:'Low',why:"Nearby meat-production or animal-agriculture facilities can involve odor, truck traffic, wastewater, or air-quality concerns depending on distance and operations."},
+          property:{level:'Low',why:"Close proximity to intensive production or processing facilities can affect buyer preference and nuisance perception."},
+          insurance:{level:'NA',why:"Not a standard property-insurance pricing factor."}}}
 ];
 
 if (typeof module !== 'undefined') module.exports = { FACTORS };
