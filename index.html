@@ -11,7 +11,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="styles.css?v=77"/>
+<link rel="stylesheet" href="styles.css?v=68"/>
+<script type="module" src="https://js.arcgis.com/5.1/embeddable-components/"></script>
 </head>
 <body>
 <div id="pageLoading" class="page-loading hidden" role="status" aria-live="polite" aria-hidden="true">
@@ -36,13 +37,6 @@
         <div class="site-stats" id="siteStats" aria-live="polite">
           <span><b id="siteViews">—</b> site views</span>
           <span><b id="pdfDownloads">—</b> PDF downloads</span>
-        </div>
-        <div class="student-support">
-          <div class="student-support-copy">
-            <div class="student-support-title">Support this student-built project</div>
-            <p>I am a high school student at San Ramon Valley High School. Your $20 donation will help me maintain this website and cover expenses such as APIs, security, database hosting, and GitHub services. A portion of your donation will also support my future college expenses. Thank you for supporting my project!</p>
-          </div>
-          <a class="student-support-btn" href="https://buy.stripe.com/28E14n6qJdXi16fc2v8N200" target="_blank" rel="noopener">Donate $20</a>
         </div>
         <div class="searchcard">
           <div class="field">
@@ -79,6 +73,7 @@
           <div id="layerStatus" class="layer-status"></div>
         </div>
         <div class="riskcol">
+          <div class="risk-head">Top risks in this area</div>
           <div class="topriskgrid">
             <div class="topcol">
               <div class="drivers-title">Top high-risk factors</div>
@@ -172,10 +167,10 @@
 <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script async src="https://js.stripe.com/v3/buy-button.js"></script>
-<script src="config.js?v=128"></script>
+<script src="config.js?v=113"></script>
 <script src="factors.js?v=31"></script>
 <script src="explanations.js?v=7"></script>
-<script src="app.js?v=149"></script>
+<script src="app.js?v=134"></script>
 <div id="xmodal" class="xmodal hidden" role="dialog" aria-modal="true">
   <div class="xmodal-card">
     <div class="xmodal-head"><h3 id="xmodalTitle"></h3><button id="xmodalClose" aria-label="Close">×</button></div>
