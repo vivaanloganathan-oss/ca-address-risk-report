@@ -470,3 +470,10 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .crime-report-shot{object-fit:cover}
 .crime-shot-loading{position:absolute;inset:1px;display:grid;place-items:center;border-radius:12px;background:#f8fafc;color:var(--muted);font-weight:800;z-index:-1}
 @media(max-width:760px){.crime-report-frame{height:560px}}
+
+.generic-source-panel{display:flex;flex-direction:column;gap:10px}
+.generic-source-address{font-weight:800;color:var(--ink);background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.35}
+.generic-source-map{height:600px;width:100%;border:1px solid var(--line);border-radius:12px;background:#dbe5f0;overflow:hidden}
+.generic-source-note{font-size:12px;color:var(--muted);line-height:1.45;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.generic-map-empty{display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:var(--muted);text-align:center;font-weight:700}
+@media(max-width:760px){.generic-source-map{height:520px}}

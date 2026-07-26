@@ -1509,6 +1509,35 @@ function embeddedMapFrame(src, title){
   return `<iframe class="crime-report-frame" src="${src}" title="${esc(title || 'Map')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
 }
 
+function genericLocationMapPanel(id, factorName, mapUrl){
+  const addr = STATE && STATE.display ? STATE.display : 'the analyzed address';
+  const sourceLine = mapUrl
+    ? `<div class="generic-source-note">Some agency/source pages cannot be embedded in a popup. This preview stays centered on the analyzed address; use the factor details and source context to verify official records.</div>`
+    : `<div class="generic-source-note">This preview stays centered on the analyzed address. Verify official records with the listed agency/source for this factor.</div>`;
+  return `<div class="generic-source-panel">
+    <div class="generic-source-address">${esc(addr)}</div>
+    <div id="${id}" class="generic-source-map" role="img" aria-label="${esc(factorName || 'Factor')} map preview centered on ${esc(addr)}"></div>
+    ${sourceLine}
+  </div>`;
+}
+
+function initGenericLocationMap(id){
+  if(!STATE || typeof L === 'undefined') return;
+  const el = document.getElementById(id);
+  if(!el || el.dataset.ready === '1') return;
+  const lat = Number(STATE.lat);
+  const lon = Number(STATE.lon);
+  if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+    el.innerHTML = '<div class="generic-map-empty">Location coordinates are unavailable for this map preview.</div>';
+    return;
+  }
+  el.dataset.ready = '1';
+  const preview = L.map(el, {scrollWheelZoom:true}).setView([lat, lon], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(preview);
+  L.marker([lat, lon]).addTo(preview).bindPopup(esc(STATE.display || 'Selected location')).openPopup();
+  setTimeout(()=>preview.invalidateSize(), 80);
+}
+
 function openFireHazardMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -2035,9 +2064,9 @@ function openFactorModal(n){
       </div>
     </div>
     <div class="detail-section">
-      <div class="detail-section-title">Map</div>
-      <div class="detail-desc">Embedded agency or map source recentered or searched for this address when the provider supports it.</div>
-      ${embeddedMapFrame(mapUrl, `${f.name || 'Factor'} map for ${STATE && STATE.display ? STATE.display : 'the analyzed address'}`)}
+      <div class="detail-section-title">Map preview</div>
+      <div class="detail-desc">Address-centered preview for this factor. Use the Open map action for rows with an official embedded layer.</div>
+      ${genericLocationMapPanel(`detailGenericMap-${f.n}`, f.name, mapUrl)}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Explanation</div>
@@ -2047,6 +2076,7 @@ function openFactorModal(n){
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
   $('#xmodal').classList.remove('hidden');
+  setTimeout(()=>initGenericLocationMap(`detailGenericMap-${f.n}`), 80);
 }
 
 function openGenericMapModal(n){
@@ -2059,14 +2089,15 @@ function openGenericMapModal(n){
   $('#xmodalTitle').textContent = `${f.name || 'Map'} Map`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
-      <div class="detail-section-title">Embedded map/source view</div>
-      <div class="detail-desc">Map source for ${esc(f.name || 'this factor')} centered or searched for ${esc(addr)} when the provider supports it.</div>
-      ${embeddedMapFrame(mapUrl, `${f.name || 'Factor'} map for ${addr}`)}
+      <div class="detail-section-title">Address-centered preview</div>
+      <div class="detail-desc">Preview for ${esc(f.name || 'this factor')} centered on ${esc(addr)}.</div>
+      ${genericLocationMapPanel('genericSourceMap', f.name || 'Factor', mapUrl)}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'Embedded map/source view. Informational screening only; verify with the official source where needed.';
+  if(foot) foot.textContent = 'Address-centered map preview. Informational screening only; verify with the official source where needed.';
   $('#xmodal').classList.remove('hidden');
+  setTimeout(()=>initGenericLocationMap('genericSourceMap'), 80);
 }
 
 function selectVisibleFactor(){
