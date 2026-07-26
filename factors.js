@@ -246,7 +246,7 @@ const FACTORS = [
   detail:"Cemetery proximity (a buyer-preference factor for some).",
   impact:{health:{level:'NA',why:"No health effect."},
           property:{level:'Low',why:"A buyer-preference factor for some."},
-          insurance:{level:'NA',why:"Not an insurance factor."}}},,
+          insurance:{level:'NA',why:"Not an insurance factor."}}},
 
  /* ---------- Livability & lifestyle (live-scored via OpenStreetMap/Census) ---------- */
  {n:37, cat:"Livability", name:"Colleges & Universities",

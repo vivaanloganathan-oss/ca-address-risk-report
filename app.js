@@ -929,14 +929,15 @@ const SUMMARY_SECTIONS = [
 ];
 
 function sectionedSummaryFactors(){
-  const byName = new Map(FACTORS.map(f => [f.name, f]));
+  const allFactors = FACTORS.filter(Boolean);
+  const byName = new Map(allFactors.map(f => [f.name, f]));
   const used = new Set();
   const sections = SUMMARY_SECTIONS.map(section => {
     const factors = section.names.map(name => byName.get(name)).filter(Boolean);
     factors.forEach(f => used.add(f.n));
     return {...section, factors};
   }).filter(section => section.factors.length);
-  const remaining = FACTORS.filter(f => !used.has(f.n));
+  const remaining = allFactors.filter(f => !used.has(f.n));
   if(remaining.length) sections.push({title:'Other', names:[], factors:remaining});
   return sections;
 }
