@@ -3221,6 +3221,20 @@ async function makePDF(){
     doc.setTextColor(...c[2]); doc.text(text,x+7,yy+11.5);
     return w;
   };
+  const pctBar=(x,yy,w,label,value)=>{
+    const n = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
+    doc.setFillColor(246,248,252); doc.setDrawColor(232,237,244); doc.roundedRect(x,yy,w,17,3,3,'FD');
+    if(n !== null){ doc.setFillColor(189,224,174); doc.rect(x,yy,Math.max(2,w*n/100),17,'F'); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.2); doc.setTextColor(43,57,77);
+    doc.text(doc.splitTextToSize(label, w-34)[0] || label, x+5, yy+11.5);
+    doc.setFont('helvetica','bold'); doc.text(n === null ? 'n/a' : `${Math.round(n)}%`, x+w-27, yy+11.5);
+  };
+  const demoBlock=(title, rows, x, yy, w)=>{
+    doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(x,yy,w,126,6,6,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(90,107,128);
+    doc.text(title.toUpperCase(), x+8, yy+15);
+    (rows || []).slice(0,5).forEach((row,i)=>pctBar(x+8, yy+24+i*19, w-16, row[0], row[1]));
+  };
   const topItems = [...(reportRisk.overall.items||[])].sort((a,b)=>(b.rank??b.v)-(a.rank??a.v) || (b.live?1:0)-(a.live?1:0));
   const topHigh = topItems.filter(x=>x.level==='High').slice(0,3);
   const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
@@ -3254,6 +3268,21 @@ async function makePDF(){
       doc.setFontSize(10.5); doc.setTextColor(20,28,46); doc.text(String(v), x+8, y+32);
     });
     y+=66;
+    const demo = c.demographics || {};
+    if(demo.education || demo.gender || demo.age || demo.race){
+      if(y+286 > H-56){ doc.addPage(); y=M+6; }
+      sectionLabel('Census demographics', M, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,107,128);
+      doc.text(`U.S. Census ACS ${((window.APP_CONFIG||{}).ACS_YEAR||'2023')} ZIP/ZCTA profile for ZIP ${STATE.zip || 'n/a'}`, M+128, y);
+      y+=12;
+      const dgap=12, dw=(CW-dgap)/2;
+      demoBlock('Education Levels', demo.education, M, y, dw);
+      demoBlock('Gender', demo.gender, M+dw+dgap, y, dw);
+      y+=138;
+      demoBlock('Age', demo.age, M, y, dw);
+      demoBlock('Racial Diversity', demo.race, M+dw+dgap, y, dw);
+      y+=146;
+    }
   }else{
     y+=8;
   }
