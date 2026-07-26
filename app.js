@@ -727,6 +727,7 @@ async function localEnvironment(lat, lon){
   const cfg = window.APP_CONFIG || {};
   const owKey = cfg.OPENWEATHER_AIR_KEY || cfg.OPENWEATHER_KEY || "";
   const serverBase = mapshotBase();
+  const airNowUrl = serverBase ? `${serverBase}/api/airnow?lat=${lat}&lon=${lon}&distance=25` : null;
   const owUrl = serverBase
     ? `${serverBase}/api/air-pollution?lat=${lat}&lon=${lon}`
     : owKey
@@ -739,12 +740,13 @@ async function localEnvironment(lat, lon){
       return res.ok ? await res.json() : null;
     }catch(e){ return null; }
   };
-  const [weather, air, openWeatherAir] = await Promise.all([
+  const [weather, air, airNow, openWeatherAir] = await Promise.all([
     optionalJson(weatherUrl, 9000),
     optionalJson(airUrl, 9000),
+    optionalJson(airNowUrl, 12000),
     optionalJson(owUrl, 12000)
   ]);
-  return {weather, air, openWeatherAir};
+  return {weather, air, airNow, openWeatherAir};
 }
 
 function openWeatherAqiInfo(aqi){
@@ -758,6 +760,8 @@ function openWeatherAqiInfo(aqi){
 }
 
 function openWeatherAirPollutionResult(env){
+  const airNow = airNowFactorResult(env);
+  if(airNow) return airNow;
   const item = env && env.openWeatherAir && env.openWeatherAir.list && env.openWeatherAir.list[0];
   if(!item || !item.main) return null;
   const aq = openWeatherAqiInfo(item.main.aqi);
@@ -2628,6 +2632,32 @@ function aqiLabel(aqi){
   if(aqi <= 150) return {label:'Sensitive', key:'sensitive', pct:aqi, note:'Sensitive groups should consider reducing prolonged outdoor exertion.'};
   return {label:'Unhealthy', key:'bad', pct:Math.min(100, aqi/2), note:'Air quality may affect health; reduce outdoor exposure.'};
 }
+function airNowBestObservation(airNow){
+  const rows = Array.isArray(airNow) ? airNow : [];
+  return rows
+    .filter(r => Number.isFinite(Number(r.AQI)))
+    .sort((a,b) => Number(b.AQI) - Number(a.AQI))[0] || null;
+}
+function airNowFactorResult(env){
+  const obs = airNowBestObservation(env && env.airNow);
+  if(!obs) return null;
+  const aqi = Number(obs.AQI);
+  const aq = aqiLabel(aqi);
+  const riskScore = aqi <= 50 ? 1 : aqi <= 100 ? 4 : aqi <= 150 ? 7 : 9;
+  const level = riskScore >= 8 ? 'High Risk' : riskScore >= 5 ? 'Moderate Risk' : riskScore >= 1 ? 'Low Risk' : 'No Risk';
+  const pollutant = obs.ParameterName || 'AQI';
+  const area = obs.ReportingArea || obs.StateCode || 'nearest AirNow monitor';
+  return {
+    label: level,
+    score: riskScore,
+    desc: `Live AirNow AQI: ${Math.round(aqi)} (${aq.label}) for ${pollutant}; reporting area ${area}.`,
+    impacts:{
+      health: IMP(level.replace(' Risk',''), aq.note),
+      property: IMP(riskScore >= 8 ? 'Moderate' : riskScore >= 5 ? 'Low' : 'No', 'Air quality can affect livability and buyer perception during high-pollution or smoke events.'),
+      insurance: IMP('NA', 'Not a standard insurance-pricing factor.')
+    }
+  };
+}
 function windDirection(deg){
   if(deg == null || Number.isNaN(+deg)) return 'n/a';
   return ['N','NE','E','SE','S','SW','W','NW'][Math.round((+deg % 360) / 45) % 8];
@@ -2644,24 +2674,29 @@ function weatherText(code){
 }
 function renderEnvironment(env){
   const host = $('#environmentSnapshot'); if(!host) return;
+  const airNowObs = airNowBestObservation(env && env.airNow);
   const owItem = env && env.openWeatherAir && env.openWeatherAir.list && env.openWeatherAir.list[0];
-  if(!env || (!env.weather && !env.air && !owItem)){
+  if(!env || (!env.weather && !env.air && !airNowObs && !owItem)){
     host.innerHTML = '<p>Live air and weather data could not be loaded for this run.</p>';
     return;
   }
   const w = (env.weather && env.weather.current) || {};
   const a = (env.air && env.air.current) || {};
   const owAq = owItem ? openWeatherAqiInfo(owItem.main && owItem.main.aqi) : null;
-  const hasUsAqi = a.us_aqi != null;
-  const aqi = hasUsAqi ? Math.round(+a.us_aqi) : (owItem && owItem.main ? Number(owItem.main.aqi) : null);
-  const aq = hasUsAqi ? aqiLabel(aqi) : {
+  const hasAirNow = airNowObs && Number.isFinite(Number(airNowObs.AQI));
+  const hasUsAqi = !hasAirNow && a.us_aqi != null;
+  const hasOpenWeather = !hasAirNow && !hasUsAqi && owItem && owItem.main;
+  const aqi = hasAirNow ? Math.round(Number(airNowObs.AQI))
+    : hasUsAqi ? Math.round(+a.us_aqi)
+      : hasOpenWeather ? Number(owItem.main.aqi) : null;
+  const aq = (hasAirNow || hasUsAqi) ? aqiLabel(aqi) : {
     key: owAq && owAq.score >= 8 ? 'bad' : owAq && owAq.score >= 5 ? 'mod' : 'good',
     pct: aqi == null ? 0 : Math.min(100, Math.max(0, aqi * 20)),
     label: owAq ? owAq.label : 'Unavailable',
     note: owAq ? owAq.note : 'Air quality could not be loaded.'
   };
-  const sourceLabel = hasUsAqi ? 'US AQI' : (owItem ? 'OpenWeather AQI' : 'AQI');
-  const aqiText = hasUsAqi ? (aqi ?? 'n/a') : (aqi == null ? 'n/a' : `${aqi}/5`);
+  const sourceLabel = hasAirNow ? `AirNow AQI${airNowObs.ParameterName ? ` · ${airNowObs.ParameterName}` : ''}` : hasUsAqi ? 'US AQI' : (owItem ? 'OpenWeather AQI' : 'AQI');
+  const aqiText = (hasAirNow || hasUsAqi) ? (aqi ?? 'n/a') : (aqi == null ? 'n/a' : `${aqi}/5`);
   const owComp = (owItem && owItem.components) || {};
   const temp = w.temperature_2m == null ? 'n/a' : `${Math.round(+w.temperature_2m)}°F`;
   const wind = w.wind_speed_10m == null ? 'n/a' : `${Math.round(+w.wind_speed_10m)} mph ${windDirection(w.wind_direction_10m)}`;
@@ -3124,10 +3159,13 @@ async function makePDF(){
   sectionLabel('Air + weather', M+panelW+panelGap+12, y+18);
   const w = (env && env.weather && env.weather.current) || {};
   const a = (env && env.air && env.air.current) || {};
+  const airNowObs = airNowBestObservation(env && env.airNow);
   const owItem = env && env.openWeatherAir && env.openWeatherAir.list && env.openWeatherAir.list[0];
-  const hasUsAqi = a.us_aqi != null;
-  const aqi = hasUsAqi ? Math.round(+a.us_aqi) : (owItem && owItem.main ? Number(owItem.main.aqi) : null);
-  const aq = hasUsAqi ? aqiLabel(aqi) : openWeatherAqiInfo(aqi);
+  const hasAirNow = airNowObs && Number.isFinite(Number(airNowObs.AQI));
+  const hasUsAqi = !hasAirNow && a.us_aqi != null;
+  const hasOpenWeather = !hasAirNow && !hasUsAqi && owItem && owItem.main;
+  const aqi = hasAirNow ? Math.round(Number(airNowObs.AQI)) : hasUsAqi ? Math.round(+a.us_aqi) : hasOpenWeather ? Number(owItem.main.aqi) : null;
+  const aq = (hasAirNow || hasUsAqi) ? aqiLabel(aqi) : openWeatherAqiInfo(aqi);
   const temp = w.temperature_2m == null ? 'n/a' : `${Math.round(+w.temperature_2m)} F`;
   const wind = w.wind_speed_10m == null ? 'n/a' : `${Math.round(+w.wind_speed_10m)} mph ${windDirection(w.wind_direction_10m)}`;
   const humid = w.relative_humidity_2m == null ? 'n/a' : `${Math.round(+w.relative_humidity_2m)}%`;
@@ -3135,9 +3173,9 @@ async function makePDF(){
   doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(ax,ay,panelW-24,48,6,6,'FD');
   doc.setDrawColor(235,238,244); doc.setLineWidth(7); doc.circle(ax+25,ay+24,17,'S');
   doc.setDrawColor(224,138,0); doc.setLineWidth(7); doc.circle(ax+25,ay+24,17,'S'); doc.setLineWidth(1);
-  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,28,46); doc.text(String(hasUsAqi ? (aqi ?? 'n/a') : (aqi == null ? 'n/a' : `${aqi}/5`)), ax+18, ay+29);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,28,46); doc.text(String((hasAirNow || hasUsAqi) ? (aqi ?? 'n/a') : (aqi == null ? 'n/a' : `${aqi}/5`)), ax+18, ay+29);
   doc.setFontSize(12); doc.text(aq.label, ax+56, ay+23);
-  doc.setFontSize(7); doc.setTextColor(90,107,128); doc.text(hasUsAqi ? 'US AQI' : 'OpenWeather AQI', ax+56, ay+36);
+  doc.setFontSize(7); doc.setTextColor(90,107,128); doc.text(hasAirNow ? 'AirNow AQI' : hasUsAqi ? 'US AQI' : 'OpenWeather AQI', ax+56, ay+36);
   const miniW=(panelW-44)/3;
   [[temp,'Clouds'],[wind,'Wind'],[humid,'Humidity']].forEach(([v,k],i)=>{
     const tx=ax+i*(miniW+8), ty=ay+60;
