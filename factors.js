@@ -31,7 +31,7 @@ const FACTORS = [
           insurance:{level:'Low',why:"Theft/vandalism rates modestly affect premiums."}}},
 
  {n:4, cat:"Zoning", name:"Zoning / Land Use",
-  map:G, recenter:'addr', live:null, basemap:'street',
+  map:"https://www.zoningatlas.org/atlas/?state_id=64&hideotherstates=true&lat=37.42160&lng=-119.27040&zoom=5.465&overlays=tribal-lands%2Cprotected-lands%2Cfema-flood%2Ctransit&filters=%7B%7D", recenter:'addr', live:null, basemap:'street',
   detail:"Residential / commercial / mixed-use designation and neighboring land uses.",
   impact:{health:{level:'NA',why:"No direct health hazard."},
           property:{level:'Low',why:"Incompatible adjacent uses can reduce value."},
