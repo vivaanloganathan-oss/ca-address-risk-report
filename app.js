@@ -1519,7 +1519,7 @@ function embeddedMapFrame(src, title){
 function sourceReferencePanel(factorName, mapUrl){
   const addr = STATE && STATE.display ? STATE.display : 'the analyzed address';
   const href = mapUrl || '';
-  let urlLabel = 'No source URL configured';
+  let urlLabel = 'No map URL configured';
   if(href){
     try{
       const u = new URL(href, window.location.href);
@@ -1531,16 +1531,16 @@ function sourceReferencePanel(factorName, mapUrl){
   return `<div class="source-reference-card compact">
     <div class="source-reference-row">
       <div>
-        <div class="source-reference-kicker">Official source</div>
-        <div class="source-reference-factor">${esc(factorName || 'Source')}</div>
+        <div class="source-reference-kicker">Map reference</div>
+        <div class="source-reference-factor">${esc(factorName || 'Map')}</div>
       </div>
       ${href ? `<a class="source-reference-btn" href="${esc(href)}" target="_blank" rel="noopener">Open map</a>` : ''}
     </div>
     <div class="source-reference-address">${esc(addr)}</div>
-    <p>Use this source to verify the agency data for the analyzed address.</p>
+    <p>Use this map/reference to verify the agency data for the analyzed address.</p>
     ${href
       ? `<div class="source-reference-url">${esc(urlLabel)}</div>`
-      : `<div class="source-reference-empty">No source URL is configured for this factor yet.</div>`}
+      : `<div class="source-reference-empty">No map URL is configured for this factor yet.</div>`}
   </div>`;
 }
 
@@ -1586,7 +1586,7 @@ function openAddressProfileMapModal(){
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'Address map and ZIP source reference. Informational screening only.';
+  if(foot) foot.textContent = 'Address map and ZIP reference. Informational screening only.';
   $('#xmodal').classList.remove('hidden');
   setTimeout(()=>initLocationProfileMap('addressProfileMap'), 100);
 }
@@ -2117,8 +2117,8 @@ function openFactorModal(n){
       </div>
     </div>
     <div class="detail-section">
-      <div class="detail-section-title">Source / map reference</div>
-      <div class="detail-desc">Use the official source for this factor. Specialized rows still open their embedded agency maps from the table.</div>
+      <div class="detail-section-title">Map reference</div>
+      <div class="detail-desc">Use the map/reference for this factor. Specialized rows open embedded agency maps from the table.</div>
       ${sourceReferencePanel(f.name, mapUrl)}
     </div>
     <div class="detail-section">
@@ -2138,12 +2138,12 @@ function openGenericMapModal(n){
   const f = item.f || {};
   const mapUrl = item.mapUrl || fill(f.map || '', STATE);
   const addr = STATE.display || 'the analyzed address';
-  $('#xmodalTitle').textContent = `${f.name || 'Factor'} Source`;
-  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal source-only-modal">
+  $('#xmodalTitle').textContent = `${f.name || 'Factor'} Map`;
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal map-reference-modal">
     ${sourceReferencePanel(f.name || 'Factor', mapUrl)}
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'Informational screening only; verify details with the listed source where needed.';
+  if(foot) foot.textContent = 'Informational screening only; verify details with the listed map/reference where needed.';
   $('#xmodal').classList.remove('hidden');
 }
 
