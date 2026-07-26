@@ -985,7 +985,7 @@ function renderSummaryTable(st, liveResults){
                 ? `<button class="rk-link map-open trails-map-open" type="button" data-trails-map="47">Open map</button>`
                 : [40,41].includes(f.n)
                   ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
-                  : `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open map</button>`;
+                  : `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open source</button>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -1530,7 +1530,7 @@ function sourceReferencePanel(factorName, mapUrl){
     <div class="source-reference-kicker">Official source reference</div>
     <div class="source-reference-factor">${esc(factorName || 'Map/source')}</div>
     <div class="source-reference-address">${esc(addr)}</div>
-    <p>Some provider pages do not allow embedded popup maps. This factor uses its official source link instead of showing a repeated generic map, so the user can verify the real agency data directly.</p>
+    <p>This factor links to an official data source or reference page. Use it to verify the live agency record for the analyzed address.</p>
     ${href
       ? `<a class="source-reference-btn" href="${esc(href)}" target="_blank" rel="noopener">Open official source</a><div class="source-reference-url">${esc(urlLabel)}</div>`
       : `<div class="source-reference-empty">No source URL is configured for this factor yet.</div>`}
@@ -2084,16 +2084,16 @@ function openGenericMapModal(n){
   const f = item.f || {};
   const mapUrl = item.mapUrl || fill(f.map || '', STATE);
   const addr = STATE.display || 'the analyzed address';
-  $('#xmodalTitle').textContent = `${f.name || 'Map'} Map`;
+  $('#xmodalTitle').textContent = `${f.name || 'Factor'} Source`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
       <div class="detail-section-title">Official source</div>
-      <div class="detail-desc">Source for ${esc(f.name || 'this factor')} related to ${esc(addr)}.</div>
+      <div class="detail-desc">Official reference for ${esc(f.name || 'this factor')} related to ${esc(addr)}.</div>
       ${sourceReferencePanel(f.name || 'Factor', mapUrl)}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'Official source reference. Informational screening only; verify with the agency/source where needed.';
+  if(foot) foot.textContent = 'Official source reference. Informational screening only; verify details with the listed source where needed.';
   $('#xmodal').classList.remove('hidden');
 }
 
