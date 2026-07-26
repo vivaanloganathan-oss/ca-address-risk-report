@@ -33,7 +33,6 @@ function cleanSupabaseUrl(value) {
 const SUPABASE_URL = cleanSupabaseUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
 const SUPABASE_STATS_ID = process.env.SUPABASE_STATS_ID || 'home-risk-radar';
-const AIRNOW_TIMEOUT_MS = Number(process.env.AIRNOW_TIMEOUT_MS || 25000);
 
 const app = express();
 app.use(cors());
@@ -205,7 +204,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v28-airnow-timeout'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v29-revert-airnow'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -405,7 +404,7 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 
 app.get('/', (req, res) => res.send(
   `CA Map Shot server ${SERVER_VERSION} — OK.\n` +
-  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/air-pollution?lat=<lat>&lon=<lon> | /api/airnow?lat=<lat>&lon=<lon> | /api/crime-score?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
+  `Endpoints: /healthz | /api/stats | /api/amenities?lat=<lat>&lon=<lon> | /api/air-pollution?lat=<lat>&lon=<lon> | /api/crime-score?lat=<lat>&lon=<lon> | /api/mapshot?factor=<id>&q=<zip-or-address>[&debug=1]`
 ));
 
 app.get('/healthz', (req, res) => res.send('ok'));
@@ -465,45 +464,6 @@ app.get('/api/air-pollution', async (req, res) => {
     res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
   } catch (e) {
     res.status(502).json({ error: 'openweather_air_pollution_failed', detail: String(e.message || e), server: SERVER_VERSION });
-  } finally {
-    clearTimeout(timer);
-  }
-});
-
-
-app.get('/api/airnow', async (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  const lat = Number(req.query.lat);
-  const lon = Number(req.query.lon);
-  const distance = Number(req.query.distance || 25);
-  const key = String(process.env.AIRNOW_API_KEY || '').trim();
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return res.status(400).json({ error: 'missing_or_invalid_lat_lon' });
-  }
-  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-    return res.status(400).json({ error: 'coordinates_out_of_range' });
-  }
-  if (!key) {
-    return res.status(503).json({ error: 'airnow_key_not_configured', hint: 'Set AIRNOW_API_KEY in Render environment variables.' });
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AIRNOW_TIMEOUT_MS);
-  try {
-    const radius = Math.max(5, Math.min(50, Number.isFinite(distance) ? distance : 25));
-    const url = 'https://www.airnowapi.org/aq/observation/latLong/current/'
-      + `?format=application/json&latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}`
-      + `&distance=${encodeURIComponent(radius)}&API_KEY=${encodeURIComponent(key)}`;
-    const upstream = await fetch(url, { signal: controller.signal });
-    const text = await upstream.text();
-    res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
-  } catch (e) {
-    const aborted = e && (e.name === 'AbortError' || /aborted/i.test(String(e.message || e)));
-    res.status(502).json({
-      error: aborted ? 'airnow_lookup_timed_out' : 'airnow_lookup_failed',
-      detail: String(e.message || e),
-      timeoutMs: AIRNOW_TIMEOUT_MS,
-      server: SERVER_VERSION
-    });
   } finally {
     clearTimeout(timer);
   }
