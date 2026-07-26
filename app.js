@@ -1526,13 +1526,18 @@ function sourceReferencePanel(factorName, mapUrl){
       urlLabel = href;
     }
   }
-  return `<div class="source-reference-card">
-    <div class="source-reference-kicker">Official source reference</div>
-    <div class="source-reference-factor">${esc(factorName || 'Map/source')}</div>
+  return `<div class="source-reference-card compact">
+    <div class="source-reference-row">
+      <div>
+        <div class="source-reference-kicker">Official source</div>
+        <div class="source-reference-factor">${esc(factorName || 'Source')}</div>
+      </div>
+      ${href ? `<a class="source-reference-btn" href="${esc(href)}" target="_blank" rel="noopener">Open source</a>` : ''}
+    </div>
     <div class="source-reference-address">${esc(addr)}</div>
-    <p>This factor links to an official data source or reference page. Use it to verify the live agency record for the analyzed address.</p>
+    <p>Use this source to verify the agency data for the analyzed address.</p>
     ${href
-      ? `<a class="source-reference-btn" href="${esc(href)}" target="_blank" rel="noopener">Open official source</a><div class="source-reference-url">${esc(urlLabel)}</div>`
+      ? `<div class="source-reference-url">${esc(urlLabel)}</div>`
       : `<div class="source-reference-empty">No source URL is configured for this factor yet.</div>`}
   </div>`;
 }
@@ -2085,15 +2090,11 @@ function openGenericMapModal(n){
   const mapUrl = item.mapUrl || fill(f.map || '', STATE);
   const addr = STATE.display || 'the analyzed address';
   $('#xmodalTitle').textContent = `${f.name || 'Factor'} Source`;
-  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
-    <div class="detail-section no-top">
-      <div class="detail-section-title">Official source</div>
-      <div class="detail-desc">Official reference for ${esc(f.name || 'this factor')} related to ${esc(addr)}.</div>
-      ${sourceReferencePanel(f.name || 'Factor', mapUrl)}
-    </div>
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal source-only-modal">
+    ${sourceReferencePanel(f.name || 'Factor', mapUrl)}
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'Official source reference. Informational screening only; verify details with the listed source where needed.';
+  if(foot) foot.textContent = 'Informational screening only; verify details with the listed source where needed.';
   $('#xmodal').classList.remove('hidden');
 }
 
