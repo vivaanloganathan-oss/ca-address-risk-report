@@ -3312,7 +3312,7 @@ async function makePDF(){
   doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(49,112,246);
   doc.text('How risk levels are determined', M, y);
 
-  /* ---- Compact factor appendix ---- */
+  /* ---- Full grouped search output appendix ---- */
   doc.addPage(); y=M+6;
   const LVLPDF={ // [fill, border, text]
     'NA':[[238,241,245],[224,229,236],[107,120,136]],
@@ -3320,6 +3320,15 @@ async function makePDF(){
     'Low':[[231,246,238],[200,234,214],[21,122,66]],
     'Moderate':[[253,242,220],[244,219,168],[167,103,0]],
     'High':[[253,231,235],[246,196,206],[187,29,56]] };
+  const cleanPdfText = value => String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const sourceUrlForPdf = f => {
+    if(f.n === 3) return communityCrimeMapUrl(STATE);
+    return fill(f.map || '', STATE);
+  };
   const levelTag=(x,yy,val)=>{
     const t=String(val||'NA'); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
     const w=doc.getTextWidth(t)+12;
@@ -3329,43 +3338,67 @@ async function makePDF(){
   };
   const appendixHeader=()=>{
     doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
-    doc.text('Factor Appendix', M, y); y+=8;
+    doc.text('Full Search Output', M, y); y+=8;
     doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=13;
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
-    doc.text('Impact bands only. Open the interactive report for expandable explanations and live maps.', M, y); y+=16;
-    doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,20,5,5,'FD');
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
-    doc.text('FACTOR', M+10, y+13);
-    doc.text('CATEGORY', M+212, y+13);
-    doc.text('HEALTH', M+314, y+13);
-    doc.text('PROPERTY', M+376, y+13);
-    doc.text('INSURANCE', M+454, y+13);
-    doc.text('LINK', M+512, y+13);
+    doc.text(doc.splitTextToSize('Complete report output grouped the same way as the on-page analysis. Open the live report for expandable explanations and interactive maps.', CW), M, y);
     y+=24;
   };
-  appendixHeader();
-  FACTORS.forEach((f, displayIndex)=>{
-    const cat = f.cat || 'Other';
-    const lv=live[f.n]; const rk=riskKey(lv&&lv.label); const col=PDFRC[rk];
-    const detail=(lv&&lv.desc)?lv.desc:f.detail;
-    const im=effImpact(f,lv);
-    const desc = doc.splitTextToSize(detail, 188).slice(0,2);
-    const rowH = Math.max(36, 20 + desc.length*8);
-    if(y+rowH > H-52){ doc.addPage(); y=M+6; appendixHeader(); }
-    doc.setDrawColor(238,242,247); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,rowH,5,5,'FD');
-    doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,3,rowH-2,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.7); doc.setTextColor(20,28,46);
-    doc.text(`#${displayIndex + 1} ${f.name}`, M+10, y+14);
-    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,107,128);
-    doc.text(desc, M+10, y+25);
+  const appendOutputLine=(label, level, why, x, yy, width)=>{
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.4); doc.setTextColor(90,107,128);
+    doc.text(label.toUpperCase(), x, yy);
+    const tagW = levelTag(x+74, yy-9, level);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(43,57,77);
-    doc.text(doc.splitTextToSize(cat, 82), M+212, y+15);
-    levelTag(M+314, y+10, im.health.level);
-    levelTag(M+376, y+10, im.property.level);
-    levelTag(M+454, y+10, im.insurance.level);
-    doc.setTextColor(59,110,165); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-    doc.textWithLink('Open', M+512, y+15, {url:fill(f.map,STATE)});
-    y += rowH+6;
+    const lines = doc.splitTextToSize(cleanPdfText(why || 'No additional detail returned for this address.'), width-84-tagW);
+    doc.text(lines, x+80+tagW, yy);
+    return yy + Math.max(14, lines.length*9);
+  };
+  const factorOutputCard=(f)=>{
+    const lv=live[f.n];
+    const rk=riskKey(lv&&lv.label);
+    const col=PDFRC[rk];
+    const im=effImpact(f,lv);
+    const detail=cleanPdfText((lv&&lv.desc)?lv.desc:f.detail);
+    const url=cleanPdfText(sourceUrlForPdf(f));
+    const titleLines=doc.splitTextToSize(f.name, 238);
+    const detailLines=doc.splitTextToSize(detail, CW-26);
+    const impactLines=[
+      doc.splitTextToSize(cleanPdfText(im.health.why), CW-118).length,
+      doc.splitTextToSize(cleanPdfText(im.property.why), CW-118).length,
+      doc.splitTextToSize(cleanPdfText(im.insurance.why), CW-118).length,
+    ].reduce((a,b)=>a+b,0);
+    const urlLines=url ? doc.splitTextToSize(`Map/source: ${url}`, CW-26).length : 0;
+    const rowH = Math.max(98, 48 + titleLines.length*9 + detailLines.length*9 + impactLines*9 + urlLines*8);
+    if(y+rowH > H-56){ doc.addPage(); y=M+6; appendixHeader(); }
+    doc.setDrawColor(226,231,238); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,rowH,6,6,'FD');
+    doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,4,rowH-2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(20,28,46);
+    doc.text(titleLines, M+12, y+16);
+    if(lv){
+      doc.setFillColor(231,246,238); doc.setDrawColor(200,234,214); doc.roundedRect(M+310,y+7,46,14,3,3,'FD');
+      doc.setTextColor(21,122,66); doc.setFontSize(6.8); doc.text('LIVE DATA', M+316, y+16.5);
+    }
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.2); doc.setTextColor(133,147,166);
+    doc.text(cleanPdfText(f.cat || 'Other').toUpperCase(), M+12, y+33 + (titleLines.length-1)*9);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.2); doc.setTextColor(43,57,77);
+    const detailY = y+48 + (titleLines.length-1)*9;
+    doc.text(detailLines, M+12, detailY);
+    let yy = detailY + detailLines.length*9 + 10;
+    yy = appendOutputLine('Health', im.health.level, im.health.why, M+12, yy, CW-24);
+    yy = appendOutputLine('Property', im.property.level, im.property.why, M+12, yy+2, CW-24);
+    yy = appendOutputLine('Insurance', im.insurance.level, im.insurance.why, M+12, yy+2, CW-24);
+    if(url){
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.2); doc.setTextColor(90,107,128);
+      doc.text(doc.splitTextToSize(`Map/source: ${url}`, CW-26), M+12, yy+4);
+    }
+    y += rowH+7;
+  };
+  appendixHeader();
+  sectionedSummaryFactors().forEach(section=>{
+    if(y+30 > H-56){ doc.addPage(); y=M+6; appendixHeader(); }
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
+    doc.text(section.title, M, y); y+=14;
+    section.items.forEach(factorOutputCard);
   });
 
   /* ---- footer ---- */
