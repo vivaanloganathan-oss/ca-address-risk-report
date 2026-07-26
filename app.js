@@ -891,7 +891,11 @@ let SUMMARY_ITEMS = {};
 let SELECTED_FACTOR = null;
 
 function communityCrimeMapUrl(st){
-  return 'https://communitycrimemap.com/map';
+  if(!st) return 'https://communitycrimemap.com/map';
+  const addr = encodeURIComponent(st.display || st.address || '');
+  const lat = encodeURIComponent(Number(st.lat).toFixed(7));
+  const lon = encodeURIComponent(Number(st.lon).toFixed(7));
+  return `https://www.communitycrimemap.com/?type=address&address=${addr}&x=${lon}&y=${lat}`;
 }
 
 function renderSummaryTable(st, liveResults){
@@ -975,7 +979,7 @@ function renderSummaryTable(st, liveResults){
                 ? `<button class="rk-link map-open trails-map-open" type="button" data-trails-map="47">Open map</button>`
                 : [40,41].includes(f.n)
                   ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
-                  : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
+                  : `<button class="rk-link map-open generic-map-open" type="button" data-generic-map="${f.n}">Open map</button>`;
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
@@ -1443,9 +1447,9 @@ function openCrimeMapModal(){
             <img id="crimeMapShot" class="crime-report-frame crime-report-shot" src="${shotUrl}" alt="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy">
             <div class="crime-shot-loading">Loading LexisNexis crime map preview...</div>
           </div>`
-        : `<iframe class="crime-report-frame" src="${url}" title="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`}
+        : `<iframe id="crimeMapDirectFrame" class="crime-report-frame" src="${url}" title="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`}
       <div class="detail-actions">
-        <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open LexisNexis Community Crime Map ↗</a>
+        <button class="btn primary detail-map" type="button" onclick="document.querySelector('#crimeMapDirectFrame')?.scrollIntoView({behavior:'smooth',block:'center'})">Crime map loaded below</button>
       </div>
     </div>
   </div>`;
@@ -1459,7 +1463,7 @@ function openCrimeMapModal(){
     }, { once:true });
     shot.addEventListener('error', () => {
       const wrap = shot.parentElement;
-      if(wrap) wrap.innerHTML = `<iframe class="crime-report-frame" src="${url}" title="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+      if(wrap) wrap.innerHTML = `<iframe id="crimeMapDirectFrame" class="crime-report-frame" src="${url}" title="LexisNexis Community Crime Map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
     }, { once:true });
   }
   $('#xmodal').classList.remove('hidden');
@@ -1480,6 +1484,31 @@ function arcgisLocationOverlay(addr){
     </div>`;
 }
 
+function arcgisMapViewerUrl(webmap, center, scale){
+  const params = new URLSearchParams({
+    configurableview: 'true',
+    webmap,
+    theme: 'light',
+    bookmarks: 'true',
+    heading: 'true',
+    legend: 'true',
+    information: 'true',
+    basemaps: 'true',
+    center,
+    scale: String(scale)
+  });
+  return `https://www.arcgis.com/apps/mapviewer/index.html?${params.toString()}`;
+}
+
+function arcgisMapFrame(webmap, center, scale, title){
+  const src = arcgisMapViewerUrl(webmap, center, scale);
+  return `<iframe class="arcgis-factor-map" style="height:600px;width:100%;" allow="local-network-access; geolocation" title="${esc(title || 'ArcGIS map')}" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+}
+
+function embeddedMapFrame(src, title){
+  return `<iframe class="crime-report-frame" src="${src}" title="${esc(title || 'Map')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+}
+
 function openFireHazardMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -1490,11 +1519,8 @@ function openFireHazardMapModal(){
       <div class="detail-section-title">Fire hazard map</div>
       <div class="detail-desc">ArcGIS fire hazard map centered on ${esc(addr)}. Verify official fire hazard designations with CAL FIRE and local agencies.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="fca1359f7f244f15a339fab249ad6c54" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('fca1359f7f244f15a339fab249ad6c54', center, '36111.909643', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=fca1359f7f244f15a339fab249ad6c54&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1513,18 +1539,14 @@ function openPipelineMapModal(){
       <div class="detail-section-title">Pipeline map</div>
       <div class="detail-desc">ArcGIS pipeline map centered on ${esc(addr)}. Confirm exact pipeline locations in PHMSA NPMS and by calling 811 before any digging.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="8f99a6da99c94bf5b71498d5bc7d3da9" theme="light" bookmarks-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('8f99a6da99c94bf5b71498d5bc7d3da9', center, '36111.909643', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=8f99a6da99c94bf5b71498d5bc7d3da9&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
-        <a class="btn ghost detail-map" href="https://pvnpms.phmsa.dot.gov/PublicViewer/" target="_blank" rel="noopener">Open PHMSA NPMS ↗</a>
       </div>
     </div>
   </div>`;
-  const foot = $('#xmodalFoot');
+  const foot = $("#xmodalFoot");
   if(foot) foot.textContent = 'Pipeline map. PHMSA may require accepting its own terms/disclaimer. Informational screening only; never use this as an exact pipeline-location source.';
-  $('#xmodal').classList.remove('hidden');
+  $("#xmodal").classList.remove("hidden");
 }
 
 function openWellsMapModal(){
@@ -1537,12 +1559,8 @@ function openWellsMapModal(){
       <div class="detail-section-title">Oil and gas wells map</div>
       <div class="detail-desc">ArcGIS oil and natural gas wells map centered on ${esc(addr)}. Use this as a screening view and verify individual well records with CalGEM.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="883592038b3f4f4082302ca7ede891bd" theme="light" bookmarks-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('883592038b3f4f4082302ca7ede891bd', center, '36111.909643', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=883592038b3f4f4082302ca7ede891bd&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
-        <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/doggr/wellfinder/" target="_blank" rel="noopener">Open CalGEM Well Finder ↗</a>
       </div>
     </div>
   </div>`;
@@ -1561,11 +1579,8 @@ function openDamsMapModal(){
       <div class="detail-section-title">Dam inundation screening map</div>
       <div class="detail-desc">ArcGIS dam and inundation map centered on ${esc(addr)}. Use this to screen downstream dam-failure context and verify official inundation boundaries with state and local emergency-management sources.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="b3118c7aa0784a25b33b5bd04ca9fedd" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled time-zone-label-enabled center="${center}" scale="18055.9548215" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('b3118c7aa0784a25b33b5bd04ca9fedd', center, '18055.9548215', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=b3118c7aa0784a25b33b5bd04ca9fedd&center=${center}&level=15" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1583,10 +1598,7 @@ function openStreamsMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">Streams and waterways map</div>
       <div class="detail-desc">ArcGIS stream map centered on ${esc(addr)}.</div>
-      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="671c48498ef04a84b87939d61051709f" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="4513.988705" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=671c48498ef04a84b87939d61051709f&center=${center}&level=16" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
-      </div>
+      ${arcgisMapFrame('671c48498ef04a84b87939d61051709f', center, '4513.988705', 'ArcGIS screening map')}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
@@ -1604,11 +1616,8 @@ function openTrafficDensityMapModal(){
       <div class="detail-section-title">Traffic density screening map</div>
       <div class="detail-desc">ArcGIS traffic density map centered on ${esc(addr)}. Use this to screen nearby traffic-volume context, roadway exposure, and transportation-related air/noise concerns.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="0802162ac417418a9fb7a2c85c60b6b2" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="288895.277144" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('0802162ac417418a9fb7a2c85c60b6b2', center, '288895.277144', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=0802162ac417418a9fb7a2c85c60b6b2&center=${center}&level=11" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1627,11 +1636,8 @@ function openRailTracksMapModal(){
       <div class="detail-section-title">Rail tracks screening map</div>
       <div class="detail-desc">ArcGIS rail tracks map centered on ${esc(addr)}. Use this to screen nearby freight and rail-corridor context; verify active rail operations, crossings, noise, and vibration with official rail and transportation sources.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="11ef92c73d434e0bbad36ad6efcef700" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.217155" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('11ef92c73d434e0bbad36ad6efcef700', center, '2311162.217155', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=11ef92c73d434e0bbad36ad6efcef700&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1650,11 +1656,8 @@ function openPowerlineMapModal(){
       <div class="detail-section-title">High-voltage powerline screening map</div>
       <div class="detail-desc">ArcGIS powerline map centered on ${esc(addr)}. Use this to screen nearby transmission corridors and verify line ownership, voltage, easements, and setbacks with official utility or agency sources.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="c2a07983f4ec44e5b1379263e1eb7595" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.2171545" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('c2a07983f4ec44e5b1379263e1eb7595', center, '2311162.2171545', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=c2a07983f4ec44e5b1379263e1eb7595&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1673,11 +1676,8 @@ function openNoiseLevelMapModal(){
       <div class="detail-section-title">Noise level screening map</div>
       <div class="detail-desc">ArcGIS noise level map centered on ${esc(addr)}. Use this to screen transportation, rail, and aviation noise context; verify modeled noise exposure with official transportation and local planning sources.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="4716b7a4c6a447a186acd90b598a541b" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.2171545" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('4716b7a4c6a447a186acd90b598a541b', center, '2311162.2171545', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=4716b7a4c6a447a186acd90b598a541b&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1696,11 +1696,8 @@ function openAirportsMapModal(){
       <div class="detail-section-title">Airports and overflight screening map</div>
       <div class="detail-desc">ArcGIS airports map centered on ${esc(addr)}. Use this to screen nearby airports, airfields, and overflight context; verify runway use, flight paths, and noise exposure with official aviation and local planning sources.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="53cef1e525de46b9af96d9a1eae9cb8b" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="18489297.737236" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('53cef1e525de46b9af96d9a1eae9cb8b', center, '18489297.737236', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=53cef1e525de46b9af96d9a1eae9cb8b&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1719,11 +1716,8 @@ function openParkRideMapModal(){
       <div class="detail-section-title">Park & Ride screening map</div>
       <div class="detail-desc">ArcGIS Park & Ride map centered on ${esc(addr)}. Use this to screen commuter parking and transit-transfer options near the analyzed address; verify availability, rules, and schedules with the local transit agency.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="08e7853b86d643488fda4ee573511a36" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36978595.474472" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('08e7853b86d643488fda4ee573511a36', center, '36978595.474472', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=08e7853b86d643488fda4ee573511a36&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1742,11 +1736,8 @@ function openCemeteriesMapModal(){
       <div class="detail-section-title">Cemeteries screening map</div>
       <div class="detail-desc">ArcGIS cemeteries map centered on ${esc(addr)}. Use this to screen mapped cemetery locations near the analyzed address; verify site boundaries, records, and local context with official local sources.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="0c82d4015f554b51b36f0e7e46ce3c56" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36978595.474472" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('0c82d4015f554b51b36f0e7e46ce3c56', center, '36978595.474472', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=0c82d4015f554b51b36f0e7e46ce3c56&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1764,10 +1755,7 @@ function openTransportationMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">Transportation access map</div>
       <div class="detail-desc">ArcGIS transportation map centered on ${esc(addr)}.</div>
-      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="71ddafc58fa745b1800f26f3ab8fa605" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="288895.277144" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=71ddafc58fa745b1800f26f3ab8fa605&center=${center}&level=11" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
-      </div>
+      ${arcgisMapFrame('71ddafc58fa745b1800f26f3ab8fa605', center, '288895.277144', 'ArcGIS screening map')}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
@@ -1785,12 +1773,8 @@ function openMinesMapModal(){
       <div class="detail-section-title">Mines and mineral resources map</div>
       <div class="detail-desc">ArcGIS mines map centered on ${esc(addr)}. Use this to review active and historic mine context near the address.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="b51d03a1b7744a0b87b7b7c82a43bbcb" theme="light" bookmarks-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('b51d03a1b7744a0b87b7b7c82a43bbcb', center, '72223.819286', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=b51d03a1b7744a0b87b7b7c82a43bbcb&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
-        <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/mol/index.html" target="_blank" rel="noopener">Open official mines map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1809,11 +1793,8 @@ function openWasteMapModal(){
       <div class="detail-section-title">Waste and dump sites map</div>
       <div class="detail-desc">ArcGIS Waste / Dump Sites map centered on ${esc(addr)}. Use this to screen nearby waste, dump-site, and solid-waste context.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="1d347d3e5093421f947fdc85932fe35f" theme="light" bookmarks-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('1d347d3e5093421f947fdc85932fe35f', center, '72223.819286', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=1d347d3e5093421f947fdc85932fe35f&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1832,11 +1813,8 @@ function openSewageMapModal(){
       <div class="detail-section-title">Water and wastewater treatment map</div>
       <div class="detail-desc">ArcGIS water and sewage treatment map centered on ${esc(addr)}. Use this to screen nearby treatment facilities and verify facility details with the relevant utility or public agency.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="9424e1d671d14ab5ae7c0350eb2cfff3" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('9424e1d671d14ab5ae7c0350eb2cfff3', center, '72223.819286', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=9424e1d671d14ab5ae7c0350eb2cfff3&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1855,11 +1833,8 @@ function openWaterStandardMapModal(){
       <div class="detail-section-title">Water standard screening map</div>
       <div class="detail-desc">ArcGIS drinking water standard map centered on ${esc(addr)}. Use this to screen water-system context and verify current compliance details with the water provider and official state records.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="85311af13c614fb399b427847693712a" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="2311162.2171545" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('85311af13c614fb399b427847693712a', center, '2311162.2171545', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=85311af13c614fb399b427847693712a&center=${center}&level=10" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1878,11 +1853,8 @@ function openGroundwaterMapModal(){
       <div class="detail-section-title">Groundwater screening map</div>
       <div class="detail-desc">ArcGIS groundwater collection map centered on ${esc(addr)}. Use this to screen groundwater well, basin, and supply context; verify current water-source details with the water provider and official state records.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="56ad6d904e3e4d898ae5b17340a5335c" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="577790.5542885" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('56ad6d904e3e4d898ae5b17340a5335c', center, '577790.5542885', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=56ad6d904e3e4d898ae5b17340a5335c&center=${center}&level=12" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1901,11 +1873,8 @@ function openPesticideMapModal(){
       <div class="detail-section-title">Pesticide use screening map</div>
       <div class="detail-desc">ArcGIS pesticide use map centered on ${esc(addr)}. Use this to screen agricultural pesticide context and verify application or exposure questions with official state and county records.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="0999601fd006449895555a7c150d6c61" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="9244648.868618" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('0999601fd006449895555a7c150d6c61', center, '9244648.868618', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=0999601fd006449895555a7c150d6c61&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1924,11 +1893,8 @@ function openGasStationMapModal(){
       <div class="detail-section-title">Gas station screening map</div>
       <div class="detail-desc">ArcGIS gas station map centered on ${esc(addr)}. Use this to screen nearby retail fuel sites and underground storage tank context; verify current facility status with official state and local records.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="a0e13acf57814fef8ef60a4d651b1fd3" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="36111.909643" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('a0e13acf57814fef8ef60a4d651b1fd3', center, '36111.909643', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=a0e13acf57814fef8ef60a4d651b1fd3&center=${center}&level=14" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1951,9 +1917,6 @@ function openAirPollutionMapModal(){
         <iframe class="arcgis-factor-map" style="height:600px;width:100%;" allow="local-network-access; geolocation" title="Air quality" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
         ${arcgisLocationOverlay(addr)}
       </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="${src}" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
-      </div>
     </div>
   </div>`;
   const foot = $("#xmodalFoot");
@@ -1971,11 +1934,8 @@ function openTrailsMapModal(){
       <div class="detail-section-title">Trails and outdoor access map</div>
       <div class="detail-desc">ArcGIS trails map centered on ${esc(addr)}. Use this to review nearby trail networks, open-space connections, and recreation access.</div>
       <div class="arcgis-location-wrap">
-        <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="202e77f7415c45a1a02768e69c6dafce" theme="light" bookmarks-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
+        ${arcgisMapFrame('202e77f7415c45a1a02768e69c6dafce', center, '72223.819286', 'ArcGIS screening map')}
         ${arcgisLocationOverlay(addr)}
-      </div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=202e77f7415c45a1a02768e69c6dafce&center=${center}&level=13" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
@@ -1992,10 +1952,7 @@ function openLiquefactionMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">CGS soil liquefaction map</div>
       <div class="detail-desc">ArcGIS liquefaction map centered on ${esc(STATE.display || 'the analyzed address')}.</div>
-      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="3477be9df9724d69a190546a51db168c" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://maps.conservation.ca.gov/cgs/informationwarehouse/eqzapp/" target="_blank" rel="noopener">Open official CGS map ↗</a>
-      </div>
+      ${arcgisMapFrame('3477be9df9724d69a190546a51db168c', center, '72223.819286', 'ArcGIS screening map')}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
@@ -2011,10 +1968,7 @@ function openLandslideMapModal(){
     <div class="detail-section no-top">
       <div class="detail-section-title">CGS landslide map</div>
       <div class="detail-desc">ArcGIS landslide hazard map centered on ${esc(STATE.display || 'the analyzed address')}.</div>
-      <arcgis-embedded-map class="arcgis-factor-map" style="height:600px;width:100%;" item-id="70ce81b7f17d4cc69425dfe4bc9aad19" theme="light" bookmarks-enabled heading-enabled legend-enabled information-enabled share-enabled basemap-gallery-enabled time-zone-label-enabled center="${center}" scale="72223.819286" portal-url="https://www.arcgis.com"></arcgis-embedded-map>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="${fill((FACTORS.find(f=>f.n===7)||{}).map || '', STATE)}" target="_blank" rel="noopener">Open official landslide map ↗</a>
-      </div>
+      ${arcgisMapFrame('70ce81b7f17d4cc69425dfe4bc9aad19', center, '72223.819286', 'ArcGIS screening map')}
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
@@ -2036,9 +1990,6 @@ function openFaultMapModal(){
       </div>
       <div id="faultLineMap" class="fault-line-map"></div>
       <div id="faultMapStatus" class="fault-map-status">Preparing fault map...</div>
-      <div class="detail-actions">
-        <a class="btn ghost detail-map" href="${fill((FACTORS.find(f=>f.n===5)||{}).map || '', STATE)}" target="_blank" rel="noopener">Open official CGS map ↗</a>
-      </div>
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
@@ -2085,10 +2036,8 @@ function openFactorModal(n){
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Map</div>
-      <div class="detail-desc">Open the live agency or map source recentered on this address.</div>
-      <div class="detail-actions">
-        <a class="btn primary detail-map" href="${mapUrl}" target="_blank" rel="noopener">Open map ↗</a>
-      </div>
+      <div class="detail-desc">Embedded agency or map source recentered or searched for this address when the provider supports it.</div>
+      ${embeddedMapFrame(mapUrl, `${f.name || 'Factor'} map for ${STATE && STATE.display ? STATE.display : 'the analyzed address'}`)}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Explanation</div>
@@ -2097,6 +2046,26 @@ function openFactorModal(n){
   </div>`;
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'Click outside, press Escape, or use the close button to close.';
+  $('#xmodal').classList.remove('hidden');
+}
+
+function openGenericMapModal(n){
+  if(!STATE) return;
+  const item = SUMMARY_ITEMS[n] || SUMMARY_ITEMS[+n];
+  if(!item) return;
+  const f = item.f || {};
+  const mapUrl = item.mapUrl || fill(f.map || '', STATE);
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = `${f.name || 'Map'} Map`;
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Embedded map/source view</div>
+      <div class="detail-desc">Map source for ${esc(f.name || 'this factor')} centered or searched for ${esc(addr)} when the provider supports it.</div>
+      ${embeddedMapFrame(mapUrl, `${f.name || 'Factor'} map for ${addr}`)}
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Embedded map/source view. Informational screening only; verify with the official source where needed.';
   $('#xmodal').classList.remove('hidden');
 }
 
@@ -2115,6 +2084,13 @@ function wireSummaryRows(){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       openFactorModal(+btn.dataset.detail);
+    });
+  });
+  document.querySelectorAll('#summaryTable .generic-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openGenericMapModal(+btn.dataset.genericMap);
     });
   });
   document.querySelectorAll('#summaryTable .crime-map-open').forEach(btn=>{
