@@ -470,12 +470,14 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .crime-shot-loading{position:absolute;inset:1px;display:grid;place-items:center;border-radius:12px;background:#f8fafc;color:var(--muted);font-weight:800;z-index:-1}
 @media(max-width:760px){.crime-report-frame{height:560px}}
 
-.generic-source-panel{display:flex;flex-direction:column;gap:10px}
-.generic-source-address{font-weight:800;color:var(--ink);background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.35}
-.generic-source-map{height:600px;width:100%;border:1px solid var(--line);border-radius:12px;background:#dbe5f0;overflow:hidden}
-.generic-source-note{font-size:12px;color:var(--muted);line-height:1.45;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-.generic-map-empty{display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:var(--muted);text-align:center;font-weight:700}
-@media(max-width:760px){.generic-source-map{height:520px}}
+.source-reference-card{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff);box-shadow:inset 0 1px 0 rgba(255,255,255,.75)}
+.source-reference-kicker{color:#64748b;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.source-reference-factor{color:var(--ink);font-size:20px;font-weight:900;line-height:1.2}
+.source-reference-address{color:#334155;font-weight:800;line-height:1.35;background:#eef5ff;border:1px solid #cfe0ff;border-radius:10px;padding:10px 12px}
+.source-reference-card p{margin:0;color:var(--muted);line-height:1.5}
+.source-reference-btn{align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;margin-top:4px;min-height:42px;padding:0 16px;border-radius:10px;background:#2f6df6;color:#fff;text-decoration:none;font-weight:900;box-shadow:0 10px 24px rgba(47,109,246,.24)}
+.source-reference-btn:hover{background:#255dde}
+.source-reference-url,.source-reference-empty{font-size:12px;color:#64748b;font-weight:700;word-break:break-word}
 
 .student-support{max-width:780px;margin:0 0 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);border-radius:18px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 48px rgba(0,0,0,.16)}
 .student-support-title{color:#fff;font-weight:900;font-size:13px;letter-spacing:.2px;margin-bottom:5px}
