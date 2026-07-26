@@ -629,10 +629,10 @@ function crimeSafetyResult(st, elements){
   const nearestText = nearestPolice
     ? `${nearestPolice.name} (${nearestPolice.dist.toFixed(nearestPolice.dist < 1 ? 2 : 1)} miles)`
     : 'no mapped police station within 3 miles';
-  const desc = `Live safety-access proxy from OpenStreetMap: ${police} police, ${fire} fire, ${hospital} hospital, ${ambulance} ambulance station(s) within 3 miles; nearest police: ${nearestText}. Open CrimeMapping for participating-agency incident maps.`;
+  const desc = `Live safety-access proxy from OpenStreetMap: ${police} police, ${fire} fire, ${hospital} hospital, ${ambulance} ambulance station(s) within 3 miles; nearest police: ${nearestText}. Open CommunityCrimeMap for participating-agency incident maps.`;
   if(police >= 1 && nearestPolice && nearestPolice.dist <= 2){
     return {label:'Low Risk',score:3,desc,
-      impacts:{health:IMP('Low','Mapped public-safety access is nearby; verify reported incidents in CrimeMapping or local police data.'),property:IMP('Low','Nearby public-safety services support location confidence, but incident rates still need review.'),insurance:IMP('Low','Safety-service access is context only; insurers use broader claims and crime data.')}};
+      impacts:{health:IMP('Low','Mapped public-safety access is nearby; verify reported incidents in CommunityCrimeMap or local police data.'),property:IMP('Low','Nearby public-safety services support location confidence, but incident rates still need review.'),insurance:IMP('Low','Safety-service access is context only; insurers use broader claims and crime data.')}};
   }
   if(police >= 1 || fire + hospital + ambulance >= 2){
     return {label:'Moderate Risk',score:5,desc,
@@ -884,16 +884,8 @@ function renderScoring(){
 let SUMMARY_ITEMS = {};
 let SELECTED_FACTOR = null;
 
-function crimeMappingUrl(st){
-  if(!st || !st.display) return 'https://www.crimemapping.com/map';
-  const params = new URLSearchParams();
-  params.set('address', st.display);
-  if(Number.isFinite(+st.lat) && Number.isFinite(+st.lon)){
-    params.set('lat', Number(st.lat).toFixed(6));
-    params.set('lon', Number(st.lon).toFixed(6));
-    params.set('zoom', '15');
-  }
-  return `https://www.crimemapping.com/map?${params.toString()}`;
+function communityCrimeMapUrl(st){
+  return 'https://communitycrimemap.com/map';
 }
 
 function renderSummaryTable(st, liveResults){
@@ -919,7 +911,7 @@ function renderSummaryTable(st, liveResults){
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
-    const mapUrl = f.n === 3 ? crimeMappingUrl(st) : fill(f.map, st);
+    const mapUrl = f.n === 3 ? communityCrimeMapUrl(st) : fill(f.map, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
     const mapAction = f.n === 3
       ? `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`
@@ -1398,7 +1390,7 @@ function initCrimeMap(){
   if(!el || !STATE) return;
   if(crimeMap){ try{ crimeMap.remove(); }catch(e){} crimeMap = null; }
   crimeMap = L.map(el, {scrollWheelZoom:true}).setView([STATE.lat, STATE.lon], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap · CrimeMapping link'}).addTo(crimeMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap · CommunityCrimeMap link'}).addTo(crimeMap);
   L.marker([STATE.lat, STATE.lon]).addTo(crimeMap).bindPopup(STATE.display || 'Analyzed address').openPopup();
   L.circle([STATE.lat, STATE.lon], {radius:4828, color:'#2563eb', weight:2, opacity:.65, fillColor:'#3b82f6', fillOpacity:.08}).addTo(crimeMap);
   L.control.scale({imperial:true}).addTo(crimeMap);
@@ -1406,7 +1398,7 @@ function initCrimeMap(){
   if(status) status.textContent = 'Loading nearby public-safety facilities...';
   fetchCrimeSafetyElements(STATE).then(elements => {
     if(!elements){
-      if(status) status.textContent = 'Live safety facilities could not load. Use CrimeMapping for reported incident maps where available.';
+      if(status) status.textContent = 'Live safety facilities could not load. Use CommunityCrimeMap for reported incident maps where available.';
       return;
     }
     const facilities = crimeSafetyFacilities(STATE, elements);
@@ -1417,7 +1409,7 @@ function initCrimeMap(){
     });
     if(status) status.textContent = facilities.length
       ? `${facilities.length} mapped public-safety facility marker(s) loaded within 3 miles. This is a safety-access proxy, not an official incident crime rate.`
-      : 'No mapped public-safety facilities found within 3 miles. Use CrimeMapping and local police data for incident review.';
+      : 'No mapped public-safety facilities found within 3 miles. Use CommunityCrimeMap and local police data for incident review.';
     setTimeout(()=>crimeMap.invalidateSize(), 80);
   }).catch(err => {
     if(status) status.textContent = `Safety map could not load: ${err.message || err}`;
@@ -1426,34 +1418,31 @@ function initCrimeMap(){
 
 function openCrimeMapModal(){
   if(!STATE) return;
-  const url = crimeMappingUrl(STATE);
+  const url = communityCrimeMapUrl(STATE);
   const addr = STATE.display || 'the analyzed address';
-  const serverBase = mapshotBase();
-  const shotUrl = serverBase
-    ? `${serverBase}/api/mapshot?factor=3&q=${encodeURIComponent(addr)}`
-    : '';
+  const shotUrl = '';
   $('#xmodalTitle').textContent = 'Crime & Public Safety Map';
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
-      <div class="detail-section-title">CrimeMapping reported incident map</div>
-      <div class="detail-desc">${shotUrl ? `The map preview below searches CrimeMapping for ${esc(addr)} and captures the zoomed result.` : `Open CrimeMapping directly for ${esc(addr)} and search this exact address if it does not auto-center.`}</div>
+      <div class="detail-section-title">CommunityCrimeMap reported incident map</div>
+      <div class="detail-desc">${shotUrl ? `CommunityCrimeMap opens reported-incident data from participating agencies. Use the address box below as the exact search target.` : `CommunityCrimeMap opens reported-incident data from participating agencies. Search this exact address if the map does not auto-center.`}</div>
       <div class="crime-address-box">
         <span>${esc(addr)}</span>
-        <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)} · requested zoom 15</small>
+        <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)}</small>
       </div>
       ${shotUrl
         ? `<div class="crime-shot-wrap">
-            <img id="crimeMapShot" class="crime-report-frame crime-report-shot" src="${shotUrl}" alt="CrimeMapping map zoomed to ${esc(addr)}" loading="lazy">
-            <div class="crime-shot-loading">Loading zoomed CrimeMapping preview...</div>
+            <img id="crimeMapShot" class="crime-report-frame crime-report-shot" src="${shotUrl}" alt="CommunityCrimeMap map for ${esc(addr)}" loading="lazy">
+            <div class="crime-shot-loading">Loading CommunityCrimeMap preview...</div>
           </div>`
-        : `<iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`}
+        : `<iframe class="crime-report-frame" src="${url}" title="CommunityCrimeMap map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`}
       <div class="detail-actions">
-        <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open CrimeMapping for this address ↗</a>
+        <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open CommunityCrimeMap for this address ↗</a>
       </div>
     </div>
   </div>`;
   const foot = $('#xmodalFoot');
-  if(foot) foot.textContent = 'CrimeMapping coverage depends on participating law-enforcement agencies. Informational screening only.';
+  if(foot) foot.textContent = 'CommunityCrimeMap coverage depends on participating law-enforcement agencies. Informational screening only.';
   const shot = $('#crimeMapShot');
   if(shot){
     shot.addEventListener('load', () => {
@@ -1462,7 +1451,7 @@ function openCrimeMapModal(){
     }, { once:true });
     shot.addEventListener('error', () => {
       const wrap = shot.parentElement;
-      if(wrap) wrap.innerHTML = `<iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+      if(wrap) wrap.innerHTML = `<iframe class="crime-report-frame" src="${url}" title="CommunityCrimeMap map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
     }, { once:true });
   }
   $('#xmodal').classList.remove('hidden');
