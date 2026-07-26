@@ -673,15 +673,18 @@ async function localEnvironment(lat, lon){
     + `&current=us_aqi,pm2_5,ozone&timezone=auto`;
   const cfg = window.APP_CONFIG || {};
   const owKey = cfg.OPENWEATHER_AIR_KEY || cfg.OPENWEATHER_KEY || "";
-  const owUrl = owKey
-    ? `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${encodeURIComponent(owKey)}`
-    : null;
+  const serverBase = mapshotBase();
+  const owUrl = serverBase
+    ? `${serverBase}/api/air-pollution?lat=${lat}&lon=${lon}`
+    : owKey
+      ? `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${encodeURIComponent(owKey)}`
+      : null;
   try{
     const jobs = [
       fetch(weatherUrl).then(r=>r.ok?r.json():null),
       fetch(airUrl).then(r=>r.ok?r.json():null)
     ];
-    if(owUrl) jobs.push(fetch(owUrl).then(r=>r.ok?r.json():null));
+    if(owUrl) jobs.push(fetchWithAbort(owUrl, {}, 9000).then(r=>r.ok?r.json():null));
     const [weatherRes, airRes, openWeatherRes] = await Promise.allSettled(jobs);
     return {
       weather: weatherRes.status === "fulfilled" ? weatherRes.value : null,

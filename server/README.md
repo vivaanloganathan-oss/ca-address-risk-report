@@ -79,10 +79,13 @@ variables are set. If they are blank, the server falls back to the local
 SUPABASE_URL=https://pfstzpwdgwfmtuxmhlai.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_STATS_ID=home-risk-radar
+OPENWEATHER_AIR_KEY=your-openweather-api-key
 ```
 
 Keep `SUPABASE_SERVICE_ROLE_KEY` only in Render environment variables. Do not
 commit it to GitHub or expose it in frontend JavaScript.
+
+`OPENWEATHER_AIR_KEY` is used by `/api/air-pollution` so the public frontend can load OpenWeather air pollution data without exposing the key in GitHub.
 
 ## Notes / limits
 

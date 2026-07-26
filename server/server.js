@@ -204,7 +204,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v23-remove-report-agent'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v24-openweather-air-proxy'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -439,6 +439,35 @@ app.post('/api/stats/download', async (req, res) => {
   }
 });
 
+
+
+app.get('/api/air-pollution', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  const key = String(process.env.OPENWEATHER_AIR_KEY || process.env.OPENWEATHER_KEY || '').trim();
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return res.status(400).json({ error: 'missing_or_invalid_lat_lon' });
+  }
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    return res.status(400).json({ error: 'coordinates_out_of_range' });
+  }
+  if (!key) {
+    return res.status(503).json({ error: 'openweather_key_not_configured', hint: 'Set OPENWEATHER_AIR_KEY in Render environment variables.' });
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&appid=${encodeURIComponent(key)}`;
+    const upstream = await fetch(url, { signal: controller.signal });
+    const text = await upstream.text();
+    res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
+  } catch (e) {
+    res.status(502).json({ error: 'openweather_air_pollution_failed', detail: String(e.message || e), server: SERVER_VERSION });
+  } finally {
+    clearTimeout(timer);
+  }
+});
 
 app.get('/api/amenities', async (req, res) => {
   res.set('Cache-Control', 'no-store');
