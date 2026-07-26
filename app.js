@@ -35,6 +35,9 @@ function setPageLoading(show, text='Loading report data...'){
 function statsBaseUrl(){
   return String((window.APP_CONFIG||{}).MAPSHOT_API_BASE || '').replace(/\/+$/, '');
 }
+function mapshotBase(){
+  return statsBaseUrl();
+}
 function formatStat(n){
   return Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '—';
 }
