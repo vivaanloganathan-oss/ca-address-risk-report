@@ -929,7 +929,9 @@ function renderSummaryTable(st, liveResults){
     const im=effImpact(f,live);
     const mapUrl = factorMapUrl(f, st);
     const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
-    const mapAction = f.n === 3
+    const mapAction = f.n === 1
+      ? `<button class="rk-link map-open address-profile-map-open" type="button" data-address-profile-map="1">Open map</button>`
+      : f.n === 3
       ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
       : f.n === 5
         ? `<button class="rk-link map-open map-embed-open" type="button" data-fault-map="5">Open map</button>`
@@ -1542,6 +1544,53 @@ function sourceReferencePanel(factorName, mapUrl){
   </div>`;
 }
 
+function locationMapPanel(id, mapUrl){
+  const addr = STATE && STATE.display ? STATE.display : 'the analyzed address';
+  const source = mapUrl ? sourceReferencePanel('Address & ZIP Profile', mapUrl) : '';
+  return `<div class="location-profile-panel">
+    <div class="location-profile-address">${esc(addr)}</div>
+    <div id="${id}" class="location-profile-map" role="img" aria-label="Map centered on ${esc(addr)}"></div>
+    ${source}
+  </div>`;
+}
+
+function initLocationProfileMap(id){
+  if(!STATE || typeof L === 'undefined') return;
+  const el = document.getElementById(id);
+  if(!el || el.dataset.ready === '1') return;
+  const lat = Number(STATE.lat);
+  const lon = Number(STATE.lon);
+  if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+    el.innerHTML = '<div class="location-map-empty">Location coordinates are unavailable for this map.</div>';
+    return;
+  }
+  el.dataset.ready = '1';
+  const map = L.map(el, {scrollWheelZoom:true}).setView([lat, lon], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+  L.marker([lat, lon]).addTo(map).bindPopup(esc(STATE.display || 'Selected location')).openPopup();
+  setTimeout(()=>map.invalidateSize(), 100);
+}
+
+function openAddressProfileMapModal(){
+  if(!STATE) return;
+  const item = SUMMARY_ITEMS[1] || {};
+  const f = item.f || {name:'Address & ZIP Profile'};
+  const mapUrl = item.mapUrl || fill(f.map || '', STATE);
+  const addr = STATE.display || 'the analyzed address';
+  $('#xmodalTitle').textContent = 'Address & ZIP Profile Map';
+  $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
+    <div class="detail-section no-top">
+      <div class="detail-section-title">Searched location</div>
+      <div class="detail-desc">Map centered on ${esc(addr)}.</div>
+      ${locationMapPanel('addressProfileMap', mapUrl)}
+    </div>
+  </div>`;
+  const foot = $('#xmodalFoot');
+  if(foot) foot.textContent = 'Address map and ZIP source reference. Informational screening only.';
+  $('#xmodal').classList.remove('hidden');
+  setTimeout(()=>initLocationProfileMap('addressProfileMap'), 100);
+}
+
 function openFireHazardMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
@@ -2113,6 +2162,13 @@ function wireSummaryRows(){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       openFactorModal(+btn.dataset.detail);
+    });
+  });
+  document.querySelectorAll('#summaryTable .address-profile-map-open').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openAddressProfileMapModal();
     });
   });
   document.querySelectorAll('#summaryTable .generic-map-open').forEach(btn=>{
