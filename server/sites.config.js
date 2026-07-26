@@ -31,6 +31,15 @@
  */
 
 export const SITES = {
+  3: { // Crime & Public Safety (CrimeMapping.com)
+    url: 'https://www.crimemapping.com/map',
+    searchSelectors: ['#locationSearch', 'input[name="locationSearch"]', 'input[placeholder*="address" i]'],
+    submit: 'button',
+    submitButtonSelector: '.locationgo',
+    suggestDelayMs: 1200, settleDelayMs: 7000,
+    viewport: { w: 1400, h: 900 }, clip: null,
+    cacheKeyVersion: 'crime-location-zoom-2026-07-25',
+  },
   6: { // Soil Liquefaction Zones (CGS EQ Zapp) — confirmed via devtools 7/4/26:
        // <input class="esri-input esri-search__input" placeholder="Find address or place" ...>
     url: 'https://maps.conservation.ca.gov/cgs/informationwarehouse/eqzapp/',

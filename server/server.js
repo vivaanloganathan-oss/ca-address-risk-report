@@ -56,8 +56,8 @@ function getBrowser() {
   return browserPromise;
 }
 
-function cacheFile(factorId, query) {
-  const hash = crypto.createHash('sha1').update(`${factorId}::${query.toLowerCase()}`).digest('hex');
+function cacheFile(factorId, query, version = '') {
+  const hash = crypto.createHash('sha1').update(`${factorId}::${version}::${query.toLowerCase()}`).digest('hex');
   return path.join(CACHE_DIR, `${factorId}_${hash}.png`);
 }
 
@@ -204,7 +204,7 @@ async function captureShot(site, query, debug = false) {
   }
 }
 
-const SERVER_VERSION = 'v24-openweather-air-proxy'; // bump when editing; check at GET /
+const SERVER_VERSION = 'v25-crimemapping-location-mapshot'; // bump when editing; check at GET /
 
 function hasSupabaseStats() {
   return !!(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -509,7 +509,7 @@ app.get('/api/mapshot', async (req, res) => {
   if (!site) return res.status(404).json({ error: 'no_dynamic_map_for_factor', factorId });
   if (!query) return res.status(400).json({ error: 'missing_query' });
 
-  const file = cacheFile(factorId, query);
+  const file = cacheFile(factorId, query, site.cacheKeyVersion || '');
   if (fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs < CACHE_TTL_MS) {
     res.type('png');
     return res.send(fs.readFileSync(file));

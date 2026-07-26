@@ -831,6 +831,11 @@ function crimeMappingUrl(st){
   if(!st || !st.display) return 'https://www.crimemapping.com/map';
   const params = new URLSearchParams();
   params.set('address', st.display);
+  if(Number.isFinite(+st.lat) && Number.isFinite(+st.lon)){
+    params.set('lat', Number(st.lat).toFixed(6));
+    params.set('lon', Number(st.lon).toFixed(6));
+    params.set('zoom', '15');
+  }
   return `https://www.crimemapping.com/map?${params.toString()}`;
 }
 
@@ -1366,16 +1371,25 @@ function openCrimeMapModal(){
   if(!STATE) return;
   const url = crimeMappingUrl(STATE);
   const addr = STATE.display || 'the analyzed address';
+  const serverBase = mapshotBase();
+  const shotUrl = serverBase
+    ? `${serverBase}/api/mapshot?factor=3&q=${encodeURIComponent(addr)}`
+    : '';
   $('#xmodalTitle').textContent = 'Crime & Public Safety Map';
   $('#xmodalBody').innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
       <div class="detail-section-title">CrimeMapping reported incident map</div>
-      <div class="detail-desc">The map below opens CrimeMapping directly for ${esc(addr)}. If CrimeMapping does not auto-center in your browser, use the button below and search this exact address.</div>
+      <div class="detail-desc">${shotUrl ? `The map preview below searches CrimeMapping for ${esc(addr)} and captures the zoomed result.` : `Open CrimeMapping directly for ${esc(addr)} and search this exact address if it does not auto-center.`}</div>
       <div class="crime-address-box">
         <span>${esc(addr)}</span>
         <small>${Number(STATE.lat).toFixed(6)}, ${Number(STATE.lon).toFixed(6)} · requested zoom 15</small>
       </div>
-      <iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      ${shotUrl
+        ? `<div class="crime-shot-wrap">
+            <img id="crimeMapShot" class="crime-report-frame crime-report-shot" src="${shotUrl}" alt="CrimeMapping map zoomed to ${esc(addr)}" loading="lazy">
+            <div class="crime-shot-loading">Loading zoomed CrimeMapping preview...</div>
+          </div>`
+        : `<iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`}
       <div class="detail-actions">
         <a class="btn primary detail-map" href="${url}" target="_blank" rel="noopener">Open CrimeMapping for this address ↗</a>
       </div>
@@ -1383,6 +1397,17 @@ function openCrimeMapModal(){
   </div>`;
   const foot = $('#xmodalFoot');
   if(foot) foot.textContent = 'CrimeMapping coverage depends on participating law-enforcement agencies. Informational screening only.';
+  const shot = $('#crimeMapShot');
+  if(shot){
+    shot.addEventListener('load', () => {
+      const loader = shot.parentElement && shot.parentElement.querySelector('.crime-shot-loading');
+      if(loader) loader.remove();
+    }, { once:true });
+    shot.addEventListener('error', () => {
+      const wrap = shot.parentElement;
+      if(wrap) wrap.innerHTML = `<iframe class="crime-report-frame" src="${url}" title="CrimeMapping map for ${esc(addr)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+    }, { once:true });
+  }
   $('#xmodal').classList.remove('hidden');
 }
 
