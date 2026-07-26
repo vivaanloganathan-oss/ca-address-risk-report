@@ -143,7 +143,7 @@ const FACTORS = [
           property:{level:'Low',why:"Adjacent plants can reduce desirability."},
           insurance:{level:'NA',why:"Not an insurance factor."}}},
 
- {n:21, cat:"Drinking Water", name:"Drinking Water Standard",
+ {n:21, cat:"Drinking Water", name:"Drinking Water Contamination",
   map:"https://www.arcgis.com/apps/mapviewer/index.html?webmap=85311af13c614fb399b427847693712a&center={LON},{LAT}&level=10", recenter:'coords', live:null, basemap:'gray',
   detail:"Serving water system and its compliance with drinking-water standards.",
   impact:{health:{level:'Moderate',why:"Water quality directly affects health."},
@@ -192,7 +192,7 @@ const FACTORS = [
           property:{level:'Low',why:"Poor air quality can soften demand."},
           insurance:{level:'NA',why:"Not a standard insurance factor."}}},
 
- {n:28, cat:"Overall Pollution", name:"Overall Pollution (CalEnviroScreen)",
+ {n:28, cat:"Overall Pollution", name:"Overall Pollution",
   map:"https://experience.arcgis.com/experience/ed5953d89038431dbf4f22ab9abfe40d/", recenter:'search', live:null, basemap:'gray',
   detail:"Cumulative environmental pollution-burden percentile from CalEnviroScreen.",
   impact:{health:{level:'Moderate',why:"Cumulative burden affects long-term health."},
@@ -291,7 +291,7 @@ const FACTORS = [
           property:{level:'Low',why:"Healthcare access is a modest value factor."},
           insurance:{level:'NA',why:"Not a standard property-insurance factor."}}},
 
- {n:43, cat:"Livability", name:"Property Value (ACS)",
+ {n:43, cat:"Livability", name:"Average Property Value",
   map:"https://www.zillow.com/homes/{ZIP}_rb/", recenter:'addr', live:'census', basemap:'street',
   detail:"ZIP median home value from the U.S. Census ACS; open Zillow for market trends.",
   impact:{health:{level:'NA',why:"Not a health factor."},

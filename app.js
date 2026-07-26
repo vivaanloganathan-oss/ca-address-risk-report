@@ -905,6 +905,42 @@ function communityCrimeMapUrl(st){
   return `https://www.communitycrimemap.com/?${params.toString()}`;
 }
 
+
+const SUMMARY_SECTIONS = [
+  {title:'Livability', names:[
+    'Address & ZIP Profile','School Zones & Ratings','Crime & Public Safety','Zoning / Land Use',
+    'Fire Station Coverage','Park & Ride','Colleges & Universities','Restaurants & Retail',
+    'Parks & Recreation','Walkability & Transit','Commute & Accessibility','Healthcare Access',
+    'Community & Lifestyle Fit','Future Development Activity','Trails & Outdoor Access',
+    'Average Property Value','Cemeteries'
+  ]},
+  {title:'Property', names:[
+    'Earthquake Fault Lines','Soil Liquefaction Zones','Landslide Zones','FEMA Flood Zone',
+    'Dams & Inundation','Rivers, Streams, Creeks','Fire Hazard Severity Zone','Rail Tracks',
+    'Tsunami Evacuation Zone'
+  ]},
+  {title:'Health', names:[
+    'Oil, Gas & Hazard Pipelines','Oil & Natural Gas Wells','Superfund (NPL) Sites',
+    'EPA / CalEPA Regulated Sites','Mines','Waste / Dump Sites','Sewage / Wastewater Treatment',
+    'Drinking Water Contamination','Ground Water Collection','Pesticide Use','Gas Stations',
+    'Microwave Stations','Cell Towers','Air Pollution (PM2.5)','Overall Pollution','Traffic Density',
+    'Powerline','Noise Level','Airports & Overflight','Meat Production'
+  ]}
+];
+
+function sectionedSummaryFactors(){
+  const byName = new Map(FACTORS.map(f => [f.name, f]));
+  const used = new Set();
+  const sections = SUMMARY_SECTIONS.map(section => {
+    const factors = section.names.map(name => byName.get(name)).filter(Boolean);
+    factors.forEach(f => used.add(f.n));
+    return {...section, factors};
+  }).filter(section => section.factors.length);
+  const remaining = FACTORS.filter(f => !used.has(f.n));
+  if(remaining.length) sections.push({title:'Other', names:[], factors:remaining});
+  return sections;
+}
+
 function renderSummaryTable(st, liveResults){
   const gz=$('#glanceZip'); if(gz) gz.textContent = st.zip ? `\u2014 ZIP ${st.zip} \u00b7 ${ZIP_CITY[st.zip]||st.city||''}` : '';
   const NOTES = localNotesFor(st);
@@ -922,7 +958,10 @@ function renderSummaryTable(st, liveResults){
       <div class="inline-explain hidden" id="explain-${f.n}" data-name="${f.name}" data-srcs="${imgs.join('|')}"></div>`;
   };
   SUMMARY_ITEMS = {};
-  const rows = FACTORS.map((f, displayIndex)=>{
+  let displayIndex = 0;
+  const rows = sectionedSummaryFactors().map(section=>{
+    const sectionRows = section.factors.map(f=>{
+      const rowOrder = displayIndex++;
     const cat = f.cat || 'Other';
     const live=liveResults[f.n]; const rk=riskKey(live&&live.label);
     const localNote = NOTES[f.n] ? `<div class="localnote">\ud83d\udccd ${NOTES[f.n]}</div>` : '';
@@ -994,19 +1033,20 @@ function renderSummaryTable(st, liveResults){
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
-    return `<tr id="sumrow-${f.n}" class="summary-row" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
-      <td class="num">${displayIndex + 1}</td>
+    return `<tr id="sumrow-${f.n}" class="summary-row" data-factor-row="true" data-section="${esc(section.title)}" data-order="${rowOrder}" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${links}</td>
     </tr>`;
+    }).join('');
+    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6">${esc(section.title)}</td></tr>${sectionRows}`;
   }).join('');
   $('#summaryTable').innerHTML =
-    `<colgroup><col class="c-num"><col class="c-fac"><col class="c-what">
+    `<colgroup><col class="c-fac"><col class="c-what">
        <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
      <thead><tr>
-       <th>#</th><th>Factor</th><th>What it is</th>
+       <th>Factor</th><th>What it is</th>
        <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
      </tr></thead><tbody>${rows}</tbody>`;
   buildGlanceControls();
@@ -1909,7 +1949,7 @@ function openWaterStandardMapModal(){
   if(!STATE) return;
   const center = `${Number(STATE.lon).toFixed(6)},${Number(STATE.lat).toFixed(6)}`;
   const addr = STATE.display || "the analyzed address";
-  $("#xmodalTitle").textContent = "Drinking Water Standard Map";
+  $("#xmodalTitle").textContent = "Drinking Water Contamination Map";
   $("#xmodalBody").innerHTML = `<div class="detail-modal fault-map-modal">
     <div class="detail-section no-top">
       <div class="detail-section-title">Water standard screening map</div>
@@ -2111,7 +2151,7 @@ function openFactorModal(n){
   const item = SUMMARY_ITEMS[n] || SUMMARY_ITEMS[+n];
   if(!item) return;
   SELECTED_FACTOR = +n;
-  document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
+  document.querySelectorAll('#summaryTable tbody tr[data-factor-row]').forEach(row=>{
     const on = row.id === `sumrow-${n}`;
     row.classList.toggle('selected', on);
     row.setAttribute('aria-pressed', String(on));
@@ -2161,10 +2201,10 @@ function openFactorModal(n){
 }
 
 function selectVisibleFactor(){
-  const visible = [...document.querySelectorAll('#summaryTable tbody tr')].filter(r=>r.style.display !== 'none');
+  const visible = [...document.querySelectorAll('#summaryTable tbody tr[data-factor-row]')].filter(r=>r.style.display !== 'none');
   if(!visible.length) return;
   const selected = SELECTED_FACTOR && visible.find(r=>r.id === `sumrow-${SELECTED_FACTOR}`);
-  document.querySelectorAll('#summaryTable tbody tr').forEach(row=>{
+  document.querySelectorAll('#summaryTable tbody tr[data-factor-row]').forEach(row=>{
     row.classList.toggle('selected', !!selected && row === selected);
     row.setAttribute('aria-pressed', String(!!selected && row === selected));
   });
@@ -2390,7 +2430,7 @@ function closeFactorModal(){
   if(tsunamiMap){ try{ tsunamiMap.remove(); }catch(e){} tsunamiMap = null; }
   if(crimeMap){ try{ crimeMap.remove(); }catch(e){} crimeMap = null; }
   SELECTED_FACTOR = null;
-  document.querySelectorAll('#summaryTable tbody tr.selected').forEach(row=>{
+  document.querySelectorAll('#summaryTable tbody tr[data-factor-row].selected').forEach(row=>{
     row.classList.remove('selected');
     row.setAttribute('aria-pressed','false');
   });
@@ -2466,19 +2506,30 @@ function downloadPdfAfterAcknowledgement(){
 let GLANCE = {cat:'*', q:'', sort:'num'};
 function applyGlanceFilters(){
   const tbody=document.querySelector('#summaryTable tbody'); if(!tbody) return;
-  let rows=[...tbody.querySelectorAll('tr')];
-  rows.sort(GLANCE.sort==='risk'
-    ? (a,b)=>(+b.dataset.risk)-(+a.dataset.risk) || (+a.id.slice(7))-(+b.id.slice(7))
-    : (a,b)=>(+a.id.slice(7))-(+b.id.slice(7)));
-  rows.forEach(r=>tbody.appendChild(r));
-  let n=0;
-  rows.forEach(r=>{
-    const ok=(GLANCE.cat==='*'||r.dataset.cat===GLANCE.cat)
-          && (!GLANCE.q || r.dataset.name.includes(GLANCE.q));
-    r.style.display = ok ? '' : 'none';
-    if(ok) n++;
+  const sectionRows=[...tbody.querySelectorAll('tr.summary-section-row')];
+  const factorRows=[...tbody.querySelectorAll('tr[data-factor-row]')];
+  sectionRows.forEach(sectionRow=>{
+    const section = sectionRow.dataset.sectionHeading;
+    const rows = factorRows.filter(row=>row.dataset.section===section);
+    rows.sort(GLANCE.sort==='risk'
+      ? (a,b)=>(+b.dataset.risk)-(+a.dataset.risk) || (+a.dataset.order)-(+b.dataset.order)
+      : (a,b)=>(+a.dataset.order)-(+b.dataset.order));
+    let anchor = sectionRow;
+    rows.forEach(row=>{
+      tbody.insertBefore(row, anchor.nextSibling);
+      anchor = row;
+    });
+    let visibleInSection = 0;
+    rows.forEach(row=>{
+      const ok=(GLANCE.cat==='*'||row.dataset.cat===GLANCE.cat)
+            && (!GLANCE.q || row.dataset.name.includes(GLANCE.q));
+      row.style.display = ok ? '' : 'none';
+      if(ok) visibleInSection++;
+    });
+    sectionRow.style.display = visibleInSection ? '' : 'none';
   });
-  const c=$('#glanceCount'); if(c) c.textContent=`showing ${n} of ${FACTORS.length}`;
+  const visibleCount = factorRows.filter(row=>row.style.display !== 'none').length;
+  const c=$('#glanceCount'); if(c) c.textContent=`showing ${visibleCount} of ${FACTORS.length}`;
   if(Object.keys(SUMMARY_ITEMS).length) selectVisibleFactor();
 }
 function buildGlanceControls(){
