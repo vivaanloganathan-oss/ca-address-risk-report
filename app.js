@@ -1392,10 +1392,10 @@ function impactBlock(label, item){
 
 
 function arcgisLocationOverlay(addr){
-  return `<div class="arcgis-location-callout" aria-hidden="true">
-    <div class="arcgis-location-bubble">${esc(addr)}</div>
-    <div class="arcgis-location-dot"></div>
-  </div>`;
+  return `<div class="arcgis-location-badge" aria-hidden="true">${esc(addr)}</div>
+    <div class="arcgis-location-callout" aria-hidden="true">
+      <div class="arcgis-location-dot"></div>
+    </div>`;
 }
 
 function openFireHazardMapModal(){
