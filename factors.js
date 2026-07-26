@@ -10,7 +10,7 @@ const G = "https://www.google.com/maps/search/?api=1&query={ADDR}";
 
 const FACTORS = [
  {n:1, cat:"About / Demographics", name:"Address & ZIP Profile",
-  map:"https://www.zip-codes.com/zip-code/{ZIP}/zip-code-{ZIP}.asp", recenter:'addr', live:'census', basemap:'street',
+  map:"https://data.census.gov/profile/California?g=040XX00US06", recenter:'addr', live:'census', basemap:'street',
   detail:"Population, median household income, median home value and education level for the ZIP — the socioeconomic backdrop for the address.",
   impact:{health:{level:'NA',why:"Demographic context, not a health hazard."},
           property:{level:'No',why:"Wealth/education context supports value; not itself a risk."},
