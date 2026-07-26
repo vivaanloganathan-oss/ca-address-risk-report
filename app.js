@@ -3399,7 +3399,7 @@ async function makePDF(){
     if(y+30 > H-56){ doc.addPage(); y=M+6; appendixHeader(); }
     doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
     doc.text(section.title, M, y); y+=14;
-    section.items.forEach(factorOutputCard);
+    section.factors.forEach(factorOutputCard);
   });
 
   /* ---- footer ---- */
