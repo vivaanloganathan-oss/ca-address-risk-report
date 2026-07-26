@@ -81,6 +81,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_STATS_ID=home-risk-radar
 OPENWEATHER_AIR_KEY=your-openweather-api-key
 AIRNOW_API_KEY=your-airnow-api-key
+AIRNOW_TIMEOUT_MS=25000
 CRIMESCORE_API_KEY=your-crimescore-api-key
 ```
 
@@ -89,7 +90,7 @@ commit it to GitHub or expose it in frontend JavaScript.
 
 `OPENWEATHER_AIR_KEY` is used by `/api/air-pollution` so the public frontend can load OpenWeather air pollution data without exposing the key in GitHub.
 
-`AIRNOW_API_KEY` is used by `/api/airnow` so the Air + Weather panel and Air Pollution row can prefer EPA AirNow AQI without exposing the key in GitHub.
+`AIRNOW_API_KEY` is used by `/api/airnow` so the Air + Weather panel and Air Pollution row can prefer EPA AirNow AQI without exposing the key in GitHub. `AIRNOW_TIMEOUT_MS` is optional; leave it at `25000` unless AirNow needs more time.
 
 `CRIMESCORE_API_KEY` is used by `/api/crime-score` so the Crime & Public Safety row can load the CrimeScore safety score without exposing the key in GitHub.
 
