@@ -3313,20 +3313,21 @@ async function makePDF(){
   const wind = w.wind_speed_10m == null ? 'n/a' : `${Math.round(+w.wind_speed_10m)} mph ${windDirection(w.wind_direction_10m)}`;
   const humid = w.relative_humidity_2m == null ? 'n/a' : `${Math.round(+w.relative_humidity_2m)}%`;
   const ax=M+panelW+panelGap+12, ay=y+32;
+  const aqiText = hasUsAqi ? (aqi ?? 'n/a') : (aqi == null ? 'n/a' : `${aqi}/5`);
+  const sourceText = hasUsAqi ? 'US AQI' : 'OpenWeather AQI';
+  const condition = weatherText(w.weather_code);
   doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(ax,ay,panelW-24,48,6,6,'FD');
-  doc.setDrawColor(235,238,244); doc.setLineWidth(7); doc.circle(ax+25,ay+24,17,'S');
-  doc.setDrawColor(224,138,0); doc.setLineWidth(7); doc.circle(ax+25,ay+24,17,'S'); doc.setLineWidth(1);
-  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,28,46); doc.text(String(hasUsAqi ? (aqi ?? 'n/a') : (aqi == null ? 'n/a' : `${aqi}/5`)), ax+18, ay+29);
-  doc.setFontSize(12); doc.text(aq.label, ax+56, ay+23);
-  doc.setFontSize(7); doc.setTextColor(90,107,128); doc.text(hasUsAqi ? 'US AQI' : 'OpenWeather AQI', ax+56, ay+36);
+  doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(20,28,46); doc.text(String(aqiText), ax+14, ay+28);
+  doc.setFontSize(13); doc.text(aq.label || 'Unavailable', ax+70, ay+22);
+  doc.setFontSize(7.3); doc.setTextColor(90,107,128); doc.text(sourceText, ax+70, ay+36);
   const miniW=(panelW-44)/3;
-  [[temp,'Clouds'],[wind,'Wind'],[humid,'Humidity']].forEach(([v,k],i)=>{
+  [[temp,condition],[wind,'Wind'],[humid,'Humidity']].forEach(([v,k],i)=>{
     const tx=ax+i*(miniW+8), ty=ay+60;
-    doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(tx,ty,miniW,31,5,5,'FD');
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(20,28,46); doc.text(String(v), tx+6, ty+13);
-    doc.setFontSize(6.5); doc.setTextColor(90,107,128); doc.text(k, tx+6, ty+24);
+    doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(tx,ty,miniW,34,5,5,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.8); doc.setTextColor(20,28,46); doc.text(String(v), tx+6, ty+14);
+    doc.setFontSize(6.8); doc.setTextColor(90,107,128); doc.text(String(k || ''), tx+6, ty+26);
   });
-  para(aq.note, ax, ay+109, panelW-24, 8.2, [90,107,128]);
+  para(aq.note, ax, ay+113, panelW-24, 8.2, [90,107,128]);
   y+=panelH+24;
   doc.setFillColor(247,249,252); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,42,6,6,'FD');
   doc.setFont('helvetica','bold'); doc.setFontSize(8.3); doc.setTextColor(90,107,128);
