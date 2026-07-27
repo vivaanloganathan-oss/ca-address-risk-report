@@ -3390,8 +3390,8 @@ async function makePDF(){
     pdfCols.forEach(c=>doc.text(c.label, c.x+4, y+14));
     y += 22;
   };
-  const drawPdfSection = title => {
-    ensurePdfSpace(24);
+  const drawPdfSection = (title, nextRowH=0) => {
+    ensurePdfSpace(nextRowH ? 22 + nextRowH : 24);
     doc.setFillColor(219,230,245); doc.setDrawColor(200,214,234); doc.rect(M,y,CW,22,'FD');
     doc.setTextColor(37,54,79); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
     doc.text(String(title || 'Other').toUpperCase(), M+6, y+14);
@@ -3399,6 +3399,19 @@ async function makePDF(){
   };
   let pdfRowIndex = 0;
   const impactText = impact => cleanPdfText(`${impact.level || 'NA'}: ${impact.why || 'No additional detail returned for this address.'}`);
+  const estimatePdfRowHeight = f => {
+    const lv=live[f.n];
+    const im=effImpact(f,lv);
+    const detail=cleanPdfText((lv&&lv.desc)?lv.desc:f.detail);
+    const factorLines=doc.splitTextToSize(`${f.name}${lv?' (LIVE)':''}\n${cleanPdfText(f.cat || 'Other').toUpperCase()}`, pdfCols[0].w-8);
+    const whatLines=doc.splitTextToSize(detail || 'No additional detail returned for this address.', pdfCols[1].w-8);
+    const healthLines=doc.splitTextToSize(impactText(im.health), pdfCols[2].w-8);
+    const propertyLines=doc.splitTextToSize(impactText(im.property), pdfCols[3].w-8);
+    const insuranceLines=doc.splitTextToSize(impactText(im.insurance), pdfCols[4].w-8);
+    const linkLines=doc.splitTextToSize('Open map', pdfCols[5].w-8);
+    const maxLines=Math.max(factorLines.length, whatLines.length, healthLines.length+1, propertyLines.length+1, insuranceLines.length+1, linkLines.length);
+    return Math.max(42, 12 + maxLines*7.2);
+  };
   const drawPdfTableRow = f => {
     const lv=live[f.n];
     const im=effImpact(f,lv);
@@ -3436,7 +3449,8 @@ async function makePDF(){
   appendixHeader();
   drawPdfTableHeader();
   sectionedSummaryFactors().forEach(section=>{
-    drawPdfSection(section.title);
+    const firstRowH = section.factors[0] ? estimatePdfRowHeight(section.factors[0]) : 0;
+    drawPdfSection(section.title, firstRowH);
     section.factors.forEach(drawPdfTableRow);
   });
 
