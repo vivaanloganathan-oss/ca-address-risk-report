@@ -961,6 +961,7 @@ function renderSummaryTable(st, liveResults){
   SUMMARY_ITEMS = {};
   let displayIndex = 0;
   const rows = sectionedSummaryFactors().map(section=>{
+    const sectionScores = [];
     const sectionRows = section.factors.map(f=>{
       const rowOrder = displayIndex++;
     const cat = f.cat || 'Other';
@@ -1032,6 +1033,7 @@ function renderSummaryTable(st, liveResults){
     const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
+    if(Number.isFinite(Number(rowRisk))) sectionScores.push(Number(rowRisk));
     const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
     return `<tr id="sumrow-${f.n}" class="summary-row" data-factor-row="true" data-section="${esc(section.title)}" data-order="${rowOrder}" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
@@ -1041,7 +1043,12 @@ function renderSummaryTable(st, liveResults){
       <td class="rk rk-${rk}">${links}</td>
     </tr>`;
     }).join('');
-    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6">${esc(section.title)}</td></tr>${sectionRows}`;
+    const sectionScore = sectionScores.length ? sectionScores.reduce((a,b)=>a+b,0)/sectionScores.length : null;
+    const sectionBand = sectionScore == null ? 'NA' : bandOf(sectionScore);
+    const sectionScoreHtml = sectionScore == null
+      ? '<span class="section-score section-score-na">No score</span>'
+      : `<span class="section-score section-score-${sectionBand.toLowerCase()}">${sectionScore.toFixed(1)}/10 · ${sectionBand}</span>`;
+    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreHtml}</td></tr>${sectionRows}`;
   }).join('');
   $('#summaryTable').innerHTML =
     `<colgroup><col class="c-fac"><col class="c-what">
