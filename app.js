@@ -948,7 +948,7 @@ function renderSummaryTable(st, liveResults){
   const cell = o => {
     const unscored = o.level === 'NA' && /live score|address-specific score/i.test(o.why || '');
     const screening = o.evidence === 'screening';
-    const note = unscored ? 'Check map/source' : screening ? 'Screening estimate' : o.why;
+    const note = unscored ? 'Check map/source' : (o.why || (screening ? 'Verify map/source before relying on this estimate.' : ''));
     return `<td class="impcell${unscored?' unscored':''}${screening?' screening':''}" title="${esc(o.why || '')}">${lvlPill(o.level)}<span class="w">${note}</span></td>`;
   };
   const whatCell = (f, what) => {
@@ -960,6 +960,7 @@ function renderSummaryTable(st, liveResults){
   };
   SUMMARY_ITEMS = {};
   let displayIndex = 0;
+  const summarySectionScores = [];
   const rows = sectionedSummaryFactors().map(section=>{
     const sectionScores = [];
     const sectionRows = section.factors.map(f=>{
@@ -1045,11 +1046,26 @@ function renderSummaryTable(st, liveResults){
     }).join('');
     const sectionScore = sectionScores.length ? sectionScores.reduce((a,b)=>a+b,0)/sectionScores.length : null;
     const displaySection = reversedSectionScore(sectionScore);
-    const sectionScoreHtml = displaySection == null
-      ? '<span class="section-score section-score-na">No score</span>'
-      : `<span class="section-score section-score-${displaySection.cls}">${displaySection.score.toFixed(1)}/10 · ${displaySection.band}</span>`;
-    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreHtml}</td></tr>${sectionRows}`;
+    if(displaySection) summarySectionScores.push({title:section.title, ...displaySection});
+    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6"><span class="section-title-text">${esc(section.title)}</span></td></tr>${sectionRows}`;
   }).join('');
+  let sectionScoreRings = $('#sectionScoreRings');
+  const summaryTable = $('#summaryTable');
+  if(!sectionScoreRings && summaryTable){
+    sectionScoreRings = document.createElement('div');
+    sectionScoreRings.id = 'sectionScoreRings';
+    sectionScoreRings.className = 'section-score-rings';
+    summaryTable.parentNode.insertBefore(sectionScoreRings, summaryTable);
+  }
+  if(sectionScoreRings){
+    sectionScoreRings.innerHTML = summarySectionScores.map(s=>{
+      const pct = Math.max(0, Math.min(100, s.score * 10));
+      return `<article class="section-score-card">
+        <div class="section-score-ring" style="--pct:${pct.toFixed(1)}"><b>${s.score.toFixed(1)}</b></div>
+        <div class="section-score-copy"><h3>${esc(s.title)}</h3><p>${s.band} score</p></div>
+      </article>`;
+    }).join('');
+  }
   $('#summaryTable').innerHTML =
     `<colgroup><col class="c-fac"><col class="c-what">
        <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
@@ -2669,7 +2685,6 @@ function evidenceWeight(evidence){
 function evidenceBadge(evidence){
   if(evidence === 'live') return '<span class="sourcechip source-live">LIVE DATA</span>';
   if(evidence === 'live-model') return '<span class="sourcechip source-model">LIVE MODEL</span>';
-  if(evidence === 'screening') return '<span class="sourcechip source-screening">SCREENING</span>';
   return '';
 }
 
@@ -3410,22 +3425,34 @@ async function makePDF(){
     const scores=(section.factors||[]).map(rowRiskForPdf).filter(v=>Number.isFinite(v));
     return scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
   };
+  const drawPdfSectionScoreOverview = sections => {
+    const scores = (sections || []).map(section => {
+      const display = reversedSectionScore(sectionScoreForPdf(section));
+      return display ? {title:section.title, ...display} : null;
+    }).filter(Boolean);
+    if(!scores.length) return;
+    ensurePdfSpace(96);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
+    doc.text('Section scores', M, y);
+    y += 11;
+    const gap=10, cardW=(CW-gap*2)/3, cardH=58;
+    scores.slice(0,3).forEach((s,i)=>{
+      const x=M+i*(cardW+gap);
+      doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(x,y,cardW,cardH,7,7,'FD');
+      doc.setDrawColor(49,112,246); doc.setLineWidth(4.6); doc.circle(x+26,y+29,17,'S'); doc.setLineWidth(1);
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
+      doc.text(s.score.toFixed(1), x+26, y+32, {align:'center'});
+      doc.setFontSize(9.8); doc.text(String(s.title || ''), x+52, y+24);
+      doc.setFontSize(7.4); doc.setTextColor(90,107,128); doc.text(`${s.band} score`, x+52, y+38);
+    });
+    y += cardH + 16;
+  };
   const drawPdfSection = (section, nextRowH=0) => {
     const title = typeof section === 'string' ? section : section.title;
-    const score = typeof section === 'string' ? null : sectionScoreForPdf(section);
-    const displaySection = reversedSectionScore(score);
-    const band = displaySection == null ? 'NA' : displaySection.band;
     ensurePdfSpace(nextRowH ? 30 + nextRowH : 32);
     doc.setFillColor(223,243,232); doc.setDrawColor(183,222,200); doc.rect(M,y,CW,30,'FD');
     doc.setTextColor(23,72,51); doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text(String(title || 'Other').toUpperCase(), M+8, y+19);
-    const scoreText = displaySection == null ? 'No score' : `${displaySection.score.toFixed(1)}/10 · ${displaySection.band}`;
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
-    const sw = doc.getTextWidth(scoreText)+16;
-    const sx = M+CW-sw-8;
-    const sc = LVLPDF[band === 'Medium' ? 'Moderate' : band] || LVLPDF['NA'];
-    doc.setFillColor(...sc[0]); doc.setDrawColor(...sc[1]); doc.roundedRect(sx,y+7,sw,16,8,8,'FD');
-    doc.setTextColor(...sc[2]); doc.text(scoreText, sx+8, y+18);
     y += 30;
   };
   const estimatePdfRowHeight = f => {
@@ -3476,8 +3503,10 @@ async function makePDF(){
     pdfRowIndex += 1;
   };
   appendixHeader();
+  const pdfSections = sectionedSummaryFactors();
+  drawPdfSectionScoreOverview(pdfSections);
   drawPdfTableHeader();
-  sectionedSummaryFactors().forEach(section=>{
+  pdfSections.forEach(section=>{
     const firstRowH = section.factors[0] ? estimatePdfRowHeight(section.factors[0]) : 0;
     drawPdfSection(section, firstRowH);
     section.factors.forEach(drawPdfTableRow);
