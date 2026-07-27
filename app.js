@@ -907,13 +907,6 @@ function communityCrimeMapUrl(st){
 
 
 const SUMMARY_SECTIONS = [
-  {title:'Livability', names:[
-    'Address & ZIP Profile','School Zones & Ratings','Crime & Public Safety','Zoning / Land Use',
-    'Fire Station Coverage','Park & Ride','Colleges & Universities','Restaurants & Retail',
-    'Parks & Recreation','Walkability & Transit','Commute & Accessibility','Healthcare Access',
-    'Community & Lifestyle Fit','Future Development Activity','Trails & Outdoor Access',
-    'Average Property Value','Cemeteries'
-  ]},
   {title:'Property', names:[
     'Earthquake Fault Lines','Soil Liquefaction Zones','Landslide Zones','FEMA Flood Zone',
     'Dams & Inundation','Rivers, Streams, Creeks','Fire Hazard Severity Zone','Rail Tracks',
@@ -925,6 +918,13 @@ const SUMMARY_SECTIONS = [
     'Drinking Water Contamination','Ground Water Collection','Pesticide Use','Gas Stations',
     'Microwave Stations','Cell Towers','Air Pollution (PM2.5)','Overall Pollution','Traffic Density',
     'Powerline','Noise Level','Airports & Overflight','Meat Production'
+  ]},
+  {title:'Livability', names:[
+    'Address & ZIP Profile','School Zones & Ratings','Crime & Public Safety','Zoning / Land Use',
+    'Fire Station Coverage','Park & Ride','Colleges & Universities','Restaurants & Retail',
+    'Parks & Recreation','Walkability & Transit','Commute & Accessibility','Healthcare Access',
+    'Community & Lifestyle Fit','Future Development Activity','Trails & Outdoor Access',
+    'Average Property Value','Cemeteries'
   ]}
 ];
 
@@ -2946,10 +2946,11 @@ function buildMainMap(st){
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'\u00a9 OpenStreetMap'}).addTo(map);
   const overlays = {};
   const layerState = {};
+  const layerFailures = {};
   const activeLayers = new Set();
   function refreshLayerStatus(){
     const el=document.getElementById('layerStatus'); if(!el) return;
-    const bad=Object.entries(layerState).filter(([,v])=>v===false).map(([k])=>k);
+    const bad=Object.entries(layerState).filter(([k,v])=>v===false && (layerFailures[k]||0) >= 2).map(([k])=>k);
     const active = [...activeLayers];
     const activeHtml = active.length ? `<div><b>Active map layers:</b> ${baseName} · ${active.join(' · ')}</div>` : `<div><b>Active map layers:</b> ${baseName} only</div>`;
     const badHtml = bad.length
@@ -2969,8 +2970,8 @@ function buildMainMap(st){
           layer = L.esri.dynamicMapLayer({url:o.url, opacity:o.opacity ?? .5, layers:o.layers, format:'png32'});
         }
       }catch(e){ layerState[o.name]=false; refreshLayerStatus(); return; }
-      layer.on('requesterror', ()=>{ layerState[o.name]=false; refreshLayerStatus(); });
-      layer.on('load', ()=>{ layerState[o.name]=true; refreshLayerStatus(); });
+      layer.on('requesterror', ()=>{ layerFailures[o.name]=(layerFailures[o.name]||0)+1; layerState[o.name]=false; refreshLayerStatus(); });
+      layer.on('load', ()=>{ layerFailures[o.name]=0; layerState[o.name]=true; refreshLayerStatus(); });
       layer.on('add', ()=>{ activeLayers.add(o.name); refreshLayerStatus(); });
       layer.on('remove', ()=>{ activeLayers.delete(o.name); refreshLayerStatus(); });
       overlays[o.name]=layer;
@@ -3360,75 +3361,87 @@ async function makePDF(){
     return fill(f.map || '', STATE);
   };
   const levelTag=(x,yy,val)=>{
-    const t=String(val||'NA'); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
-    const w=doc.getTextWidth(t)+12;
+    const t=String(val||'NA'); doc.setFontSize(6.8); doc.setFont('helvetica','bold');
+    const w=Math.min(48, doc.getTextWidth(t)+10);
     const c=LVLPDF[val]||LVLPDF['NA'];
-    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,14,3,3,'FD');
-    doc.setTextColor(...c[2]); doc.text(t,x+6,yy+9.5); return w;
+    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,12,3,3,'FD');
+    doc.setTextColor(...c[2]); doc.text(t,x+5,yy+8.3); return w;
   };
   const appendixHeader=()=>{
     doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
     doc.text('Full Search Output', M, y); y+=8;
     doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=13;
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
-    doc.text(doc.splitTextToSize('Complete report output grouped the same way as the on-page analysis. Open the live report for expandable explanations and interactive maps.', CW), M, y);
+    doc.text(doc.splitTextToSize('Complete report output grouped the same way as the on-page analysis. Each factor shows the same columns as the table: factor, what it is, health, property value, insurance, and source.', CW), M, y);
     y+=24;
   };
-  const appendOutputLine=(label, level, why, x, yy, width)=>{
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.4); doc.setTextColor(90,107,128);
-    doc.text(label.toUpperCase(), x, yy);
-    const tagW = levelTag(x+74, yy-9, level);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(43,57,77);
-    const lines = doc.splitTextToSize(cleanPdfText(why || 'No additional detail returned for this address.'), width-84-tagW);
-    doc.text(lines, x+80+tagW, yy);
-    return yy + Math.max(14, lines.length*9);
+  const pdfCols = [
+    {key:'factor', label:'Factor', x:M, w:86},
+    {key:'what', label:'What it is', x:M+86, w:136},
+    {key:'health', label:'Health impact', x:M+222, w:96},
+    {key:'property', label:'Property value', x:M+318, w:96},
+    {key:'insurance', label:'Insurance', x:M+414, w:86},
+    {key:'source', label:'Source', x:M+500, w:CW-500}
+  ];
+  const ensurePdfSpace = needed => {
+    if(y + needed > H - 56){
+      doc.addPage(); y=M+6; appendixHeader(); drawPdfTableHeader();
+    }
   };
-  const factorOutputCard=(f)=>{
+  const drawPdfTableHeader = () => {
+    if(y + 24 > H - 56){ doc.addPage(); y=M+6; appendixHeader(); }
+    doc.setFillColor(18,29,48); doc.rect(M,y,CW,22,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    pdfCols.forEach(c=>doc.text(c.label, c.x+4, y+14));
+    y += 22;
+  };
+  const drawPdfSection = title => {
+    ensurePdfSpace(24);
+    doc.setFillColor(219,230,245); doc.setDrawColor(200,214,234); doc.rect(M,y,CW,22,'FD');
+    doc.setTextColor(37,54,79); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+    doc.text(String(title || 'Other').toUpperCase(), M+6, y+14);
+    y += 22;
+  };
+  let pdfRowIndex = 0;
+  const impactText = impact => cleanPdfText(`${impact.level || 'NA'}: ${impact.why || 'No additional detail returned for this address.'}`);
+  const drawPdfTableRow = f => {
     const lv=live[f.n];
-    const rk=riskKey(lv&&lv.label);
-    const col=PDFRC[rk];
     const im=effImpact(f,lv);
     const detail=cleanPdfText((lv&&lv.desc)?lv.desc:f.detail);
     const url=cleanPdfText(sourceUrlForPdf(f));
-    const titleLines=doc.splitTextToSize(f.name, 238);
-    const detailLines=doc.splitTextToSize(detail, CW-26);
-    const impactLines=[
-      doc.splitTextToSize(cleanPdfText(im.health.why), CW-118).length,
-      doc.splitTextToSize(cleanPdfText(im.property.why), CW-118).length,
-      doc.splitTextToSize(cleanPdfText(im.insurance.why), CW-118).length,
-    ].reduce((a,b)=>a+b,0);
-    const urlLines=url ? doc.splitTextToSize(`Map/source: ${url}`, CW-26).length : 0;
-    const rowH = Math.max(98, 48 + titleLines.length*9 + detailLines.length*9 + impactLines*9 + urlLines*8);
-    if(y+rowH > H-56){ doc.addPage(); y=M+6; appendixHeader(); }
-    doc.setDrawColor(226,231,238); doc.setFillColor(255,255,255); doc.roundedRect(M,y,CW,rowH,6,6,'FD');
-    doc.setFillColor(col[0],col[1],col[2]); doc.rect(M,y+1,4,rowH-2,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(20,28,46);
-    doc.text(titleLines, M+12, y+16);
-    if(lv){
-      doc.setFillColor(231,246,238); doc.setDrawColor(200,234,214); doc.roundedRect(M+310,y+7,46,14,3,3,'FD');
-      doc.setTextColor(21,122,66); doc.setFontSize(6.8); doc.text('LIVE DATA', M+316, y+16.5);
-    }
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.2); doc.setTextColor(133,147,166);
-    doc.text(cleanPdfText(f.cat || 'Other').toUpperCase(), M+12, y+33 + (titleLines.length-1)*9);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.2); doc.setTextColor(43,57,77);
-    const detailY = y+48 + (titleLines.length-1)*9;
-    doc.text(detailLines, M+12, detailY);
-    let yy = detailY + detailLines.length*9 + 10;
-    yy = appendOutputLine('Health', im.health.level, im.health.why, M+12, yy, CW-24);
-    yy = appendOutputLine('Property', im.property.level, im.property.why, M+12, yy+2, CW-24);
-    yy = appendOutputLine('Insurance', im.insurance.level, im.insurance.why, M+12, yy+2, CW-24);
-    if(url){
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.2); doc.setTextColor(90,107,128);
-      doc.text(doc.splitTextToSize(`Map/source: ${url}`, CW-26), M+12, yy+4);
-    }
-    y += rowH+7;
+    const factorLines=doc.splitTextToSize(`${f.name}${lv?' (LIVE)':''}\n${cleanPdfText(f.cat || 'Other').toUpperCase()}`, pdfCols[0].w-8);
+    const whatLines=doc.splitTextToSize(detail || 'No additional detail returned for this address.', pdfCols[1].w-8);
+    const healthLines=doc.splitTextToSize(impactText(im.health), pdfCols[2].w-8);
+    const propertyLines=doc.splitTextToSize(impactText(im.property), pdfCols[3].w-8);
+    const insuranceLines=doc.splitTextToSize(impactText(im.insurance), pdfCols[4].w-8);
+    const sourceLines=doc.splitTextToSize(url || 'Open report map/source', pdfCols[5].w-8);
+    const maxLines=Math.max(factorLines.length, whatLines.length, healthLines.length+1, propertyLines.length+1, insuranceLines.length+1, sourceLines.length);
+    const rowH=Math.max(42, 12 + maxLines*7.2);
+    ensurePdfSpace(rowH);
+    const fill = pdfRowIndex % 2 ? [248,250,253] : [255,255,255];
+    doc.setFillColor(...fill); doc.setDrawColor(226,231,238); doc.rect(M,y,CW,rowH,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.4); doc.setTextColor(20,28,46);
+    doc.text(factorLines, pdfCols[0].x+4, y+10);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.1); doc.setTextColor(43,57,77);
+    doc.text(whatLines, pdfCols[1].x+4, y+10);
+    levelTag(pdfCols[2].x+4, y+5, im.health.level);
+    levelTag(pdfCols[3].x+4, y+5, im.property.level);
+    levelTag(pdfCols[4].x+4, y+5, im.insurance.level);
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.8); doc.setTextColor(43,57,77);
+    doc.text(healthLines, pdfCols[2].x+4, y+22);
+    doc.text(propertyLines, pdfCols[3].x+4, y+22);
+    doc.text(insuranceLines, pdfCols[4].x+4, y+22);
+    doc.setFontSize(6.6); doc.setTextColor(90,107,128);
+    doc.text(sourceLines, pdfCols[5].x+4, y+10);
+    pdfCols.slice(1).forEach(c=>{ doc.setDrawColor(234,238,245); doc.line(c.x,y,c.x,y+rowH); });
+    y += rowH;
+    pdfRowIndex += 1;
   };
   appendixHeader();
+  drawPdfTableHeader();
   sectionedSummaryFactors().forEach(section=>{
-    if(y+30 > H-56){ doc.addPage(); y=M+6; appendixHeader(); }
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
-    doc.text(section.title, M, y); y+=14;
-    section.factors.forEach(factorOutputCard);
+    drawPdfSection(section.title);
+    section.factors.forEach(drawPdfTableRow);
   });
 
   /* ---- footer ---- */
