@@ -3186,7 +3186,7 @@ async function makePDF(){
   doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
   doc.text('OpenStreetMap preview centered on this address. Live report includes FEMA flood, CGS seismic, and CAL FIRE layers.', M+14, y+282);
   y+=320;
-  doc.setFillColor(239,246,255); doc.setDrawColor(208,224,255); doc.roundedRect(M,y,CW,46,8,8,'FD');
+  doc.setFillColor(239,246,255); doc.setDrawColor(208,224,255); doc.roundedRect(M,y,CW,64,8,8,'FD');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(49,112,246);
   doc.text('Report focus', M+14, y+18);
   doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(43,57,77);
