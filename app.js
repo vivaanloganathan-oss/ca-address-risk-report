@@ -3408,8 +3408,8 @@ async function makePDF(){
     const score = typeof section === 'string' ? null : sectionScoreForPdf(section);
     const band = score == null ? 'NA' : bandOf(score);
     ensurePdfSpace(nextRowH ? 30 + nextRowH : 32);
-    doc.setFillColor(207,226,248); doc.setDrawColor(184,210,239); doc.rect(M,y,CW,30,'FD');
-    doc.setTextColor(31,54,88); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.setFillColor(223,243,232); doc.setDrawColor(183,222,200); doc.rect(M,y,CW,30,'FD');
+    doc.setTextColor(23,72,51); doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text(String(title || 'Other').toUpperCase(), M+8, y+19);
     const scoreText = score == null ? 'No score' : `${score.toFixed(1)}/10 · ${band}`;
     doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
