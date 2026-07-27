@@ -193,7 +193,7 @@ table.sumtable col.c-rk{width:104px}
 table.sumtable thead th{background:var(--navy);color:#fff;text-align:left;padding:15px 14px;font-weight:800;font-size:13px;letter-spacing:.45px;position:sticky;top:0}
 table.sumtable td{padding:11px 12px;border-bottom:1px solid #eef2f7;vertical-align:top}
 table.sumtable .summary-section-row td{background:#dff3e8;color:#174833;font-size:17px;font-weight:950;letter-spacing:1px;text-transform:uppercase;padding:17px 18px;border-top:1px solid #b7dec8;border-bottom:1px solid #b7dec8}
-table.sumtable .summary-section-row td{display:flex;align-items:center;justify-content:flex-start;gap:14px}
+table.sumtable .summary-section-row td{display:table-cell}
 .section-title-text{display:inline-flex;align-items:center;min-width:0}
 .section-score-rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 16px}
 .section-score-card{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:14px 16px;box-shadow:0 10px 24px rgba(15,23,42,.06)}
