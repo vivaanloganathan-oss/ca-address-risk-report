@@ -427,10 +427,31 @@ const AMENITY_BASELINES = {
   '94041': {eat:138, shop:104, park:19, transit:50, station:2, health:24, community:11, constr:2},
   '95814': {eat:150, shop:95, park:21, transit:85, station:4, health:28, community:14, constr:5},
 };
+
+const CITY_AMENITY_BASELINES = [
+  {re:/san francisco|oakland|berkeley|los angeles|santa monica/i, counts:{eat:220, shop:160, park:28, transit:150, station:12, health:42, community:20, constr:4}},
+  {re:/sacramento/i, counts:{eat:150, shop:95, park:21, transit:85, station:4, health:28, community:14, constr:5}},
+  {re:/san jose|mountain view|palo alto|sunnyvale|santa clara|cupertino/i, counts:{eat:120, shop:85, park:25, transit:48, station:3, health:22, community:10, constr:2}},
+  {re:/san ramon|danville|dublin|pleasanton|walnut creek|concord|livermore|burlingame/i, counts:{eat:82, shop:55, park:33, transit:18, station:1, health:12, community:8, constr:0}},
+];
+
+const DEFAULT_AMENITY_BASELINE = {eat:45, shop:32, park:16, transit:10, station:0, health:8, community:5, constr:0};
+
+function zipFromState(st){
+  const direct = String(st?.zip || '').match(/\b\d{5}\b/);
+  if(direct) return direct[0];
+  const text = [st?.display, st?.input, st?.query, st?.city, st?.county].filter(Boolean).join(' ');
+  const m = String(text).match(/\b\d{5}\b/);
+  return m ? m[0] : '';
+}
+
 function baselineAmenityCounts(st){
-  const base = AMENITY_BASELINES[String(st?.zip || '')];
-  if(!base) return null;
-  return {...emptyAmenityCounts(), ...base, _fallback:true};
+  const zip = zipFromState(st);
+  const base = AMENITY_BASELINES[zip];
+  if(base) return {...emptyAmenityCounts(), ...base, _fallback:true, _baseline:'zip'};
+  const text = [st?.display, st?.input, st?.query, st?.city, st?.county].filter(Boolean).join(' ');
+  const cityBase = CITY_AMENITY_BASELINES.find(x => x.re.test(text));
+  return {...emptyAmenityCounts(), ...(cityBase ? cityBase.counts : DEFAULT_AMENITY_BASELINE), _fallback:true, _baseline:cityBase ? 'city' : 'generic'};
 }
 function amenityTotal(c){
   return c ? ['eat','shop','park','health','transit','station','community','constr'].reduce((sum,k)=>sum+(+c[k]||0),0) : 0;
@@ -505,9 +526,9 @@ async function overpassAmenities(st){
   const live = await overpassAmenitiesBackend(lat,lon);
   if(amenityTotal(live) > 0) return live;
   const baseline = baselineAmenityCounts(st);
-  if(baseline) return baseline;
+  if(baseline && baseline._baseline !== 'generic') return baseline;
   const direct = await overpassAmenitiesDirect(lat,lon);
-  return amenityTotal(direct) > 0 ? direct : null;
+  return amenityTotal(direct) > 0 ? direct : baseline;
 }
 
 function schoolAccessQuery(lat, lon){
@@ -929,11 +950,13 @@ const SUMMARY_SECTIONS = [
 ];
 
 function sectionedSummaryFactors(){
-  const allFactors = FACTORS.filter(Boolean);
-  const byName = new Map(allFactors.map(f => [f.name, f]));
+  const allFactors = (Array.isArray(FACTORS) ? FACTORS : []).filter(f => f && f.name);
+  const configuredSections = (Array.isArray(SUMMARY_SECTIONS) ? SUMMARY_SECTIONS : []).filter(Boolean);
+  const byName = new Map(allFactors.map(f => [String(f.name), f]));
   const used = new Set();
-  const sections = SUMMARY_SECTIONS.map(section => {
-    const factors = section.names.map(name => byName.get(name)).filter(Boolean);
+  const sections = configuredSections.map(section => {
+    const names = Array.isArray(section.names) ? section.names : [];
+    const factors = names.map(name => byName.get(String(name))).filter(Boolean);
     factors.forEach(f => used.add(f.n));
     return {...section, factors};
   }).filter(section => section.factors.length);
@@ -952,16 +975,17 @@ function renderSummaryTable(st, liveResults){
     return `<td class="impcell${unscored?' unscored':''}${screening?' screening':''}" title="${esc(o.why || '')}">${lvlPill(o.level)}<span class="w">${note}</span></td>`;
   };
   const whatCell = (f, what) => {
-    const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
-    if(!imgs.length) return what;
+    const guide = guidePdfForFactor(f);
+    if(!guide) return what;
     return `${what}
       <button class="impact-link" type="button" data-n="${f.n}" aria-expanded="false" aria-controls="explain-${f.n}">Read more</button>
-      <div class="inline-explain hidden" id="explain-${f.n}" data-name="${f.name}" data-srcs="${imgs.join('|')}"></div>`;
+      <div class="inline-explain hidden" id="explain-${f.n}" data-name="${esc(f.name)}" data-guide="${esc(guide)}"></div>`;
   };
   SUMMARY_ITEMS = {};
   let displayIndex = 0;
   const summarySectionScores = [];
-  const rows = sectionedSummaryFactors().map(section=>{
+  const groupedSections = sectionedSummaryFactors();
+  const rows = groupedSections.map(section=>{
     const sectionScores = [];
     const sectionRows = section.factors.map(f=>{
       const rowOrder = displayIndex++;
@@ -1035,8 +1059,8 @@ function renderSummaryTable(st, liveResults){
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     if(Number.isFinite(Number(rowRisk))) sectionScores.push(Number(rowRisk));
-    const imgs = (window.FACTOR_EXPLAIN||{})[f.n]||[];
-    SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, imgs};
+    const guide = guidePdfForFactor(f);
+    SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, guide};
     return `<tr id="sumrow-${f.n}" class="summary-row" data-factor-row="true" data-section="${esc(section.title)}" data-order="${rowOrder}" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
@@ -1078,51 +1102,60 @@ function renderSummaryTable(st, liveResults){
   wireSummaryRows();
 }
 
-/* Impact-summary mapping embedded directly (fallback if explanations.js fails to load) */
-window.FACTOR_EXPLAIN = window.FACTOR_EXPLAIN || {
-  5: ["explanations/f5_1.jpg"],
-  6: ["explanations/f6_1.jpg"],
-  7: ["explanations/f7_1.jpg", "explanations/f7_2.jpg"],
-  8: ["explanations/f8_1.jpg", "explanations/f8_2.jpg"],
-  9: ["explanations/f9_1.jpg", "explanations/f9_2.jpg"],
-  10: ["explanations/f10_1.jpg", "explanations/f10_2.jpg"],
-  11: ["explanations/f11_1.jpg", "explanations/f11_2.jpg"],
-  13: ["explanations/f13_1.jpg", "explanations/f13_2.jpg"],
-  14: ["explanations/f14_1.jpg", "explanations/f14_2.jpg", "explanations/f14_3.jpg"],
-  15: ["explanations/f15_1.jpg", "explanations/f15_2.jpg", "explanations/f15_3.jpg", "explanations/f15_4.jpg", "explanations/f15_5.jpg", "explanations/f15_6.jpg"],
-  16: ["explanations/f16_1.jpg", "explanations/f16_2.jpg", "explanations/f16_3.jpg", "explanations/f16_4.jpg"],
-  17: ["explanations/f17_1.jpg", "explanations/f17_2.jpg", "explanations/f17_3.jpg", "explanations/f17_4.jpg"],
-  18: ["explanations/f18_1.jpg", "explanations/f18_2.jpg"],
-  19: ["explanations/f19_1.jpg", "explanations/f19_2.jpg", "explanations/f19_3.jpg", "explanations/f19_4.jpg"],
-  23: ["explanations/f23_1.jpg"],
-  24: ["explanations/f24_1.jpg", "explanations/f24_2.jpg", "explanations/f24_3.jpg"],
-  25: ["explanations/f25_1.jpg", "explanations/f25_2.jpg", "explanations/f25_3.jpg", "explanations/f25_4.jpg"],
-  26: ["explanations/f26_1.jpg", "explanations/f26_2.jpg", "explanations/f26_3.jpg", "explanations/f26_4.jpg"],
-  27: ["explanations/f27_1.jpg", "explanations/f27_2.jpg"],
-  28: ["explanations/f28_1.jpg", "explanations/f28_2.jpg", "explanations/f28_3.jpg", "explanations/f28_4.jpg"],
-  29: ["explanations/f29_1.jpg", "explanations/f29_2.jpg", "explanations/f29_3.jpg", "explanations/f29_4.jpg"],
-  30: ["explanations/f30_1.jpg", "explanations/f30_2.jpg", "explanations/f30_3.jpg"],
-  31: ["explanations/f31_1.jpg", "explanations/f31_2.jpg"],
-  32: ["explanations/f32_1.jpg", "explanations/f32_2.jpg"],
-  33: ["explanations/f33_1.jpg", "explanations/f33_2.jpg", "explanations/f33_3.jpg", "explanations/f33_4.jpg"],
+/* PDF guide mapping for inline "Read more" and factor detail popups. */
+const FACTOR_GUIDES = window.FACTOR_GUIDES = window.FACTOR_GUIDES || {
+  5: 'guides/01_Earthquake_Fault_Lines.pdf',
+  6: 'guides/02_Soil_Liquefaction_Zones.pdf',
+  7: 'guides/03_Landslide_Zones.pdf',
+  8: 'guides/04_FEMA_Flood_Zone.pdf',
+  9: 'guides/05_Dams_Inundation.pdf',
+  10: 'guides/06_Rivers_Streams_Creeks.pdf',
+  11: 'guides/07_Fire_Hazard_Severity_Zone.pdf',
+  13: 'guides/08_Oil_Gas_Hazard_Pipelines.pdf',
+  14: 'guides/09_Oil_Natural_Gas_Wells.pdf',
+  15: 'guides/10_Superfund_NPL_Sites.pdf',
+  16: 'guides/11_EPA_CalEPA_Regulated_Sites.pdf',
+  17: 'guides/12_Mines.pdf',
+  19: 'guides/13_Waste_Dump_Sites.pdf',
+  20: 'guides/14_Sewage_Wastewater_Treatment.pdf',
+  21: 'guides/15_Drinking_Water_Contamination.pdf',
+  22: 'guides/16_Ground_Water_Collection.pdf',
+  23: 'guides/17_Pesticide_Use.pdf',
+  24: 'guides/18_Gas_Stations.pdf',
+  25: 'guides/19_Microwave_Stations.pdf',
+  26: 'guides/20_Cell_Towers.pdf',
+  27: 'guides/21_Air_Pollution_PM2_5.pdf',
+  28: 'guides/22_Overall_Pollution.pdf',
+  29: 'guides/23_Traffic_Density.pdf',
+  30: 'guides/24_Rail_Tracks.pdf',
+  31: 'guides/25_Powerline.pdf',
+  32: 'guides/26_Noise_Level.pdf',
+  33: 'guides/27_Airports_Overflight.pdf',
+  48: 'guides/28_Meat_Processing_Plant.pdf',
 };
 
-/* ---------- Inline impact summaries (from factor-explanation workbooks) ---------- */
+function guidePdfForFactor(f){
+  return f ? (window.FACTOR_GUIDES || {})[f.n] : '';
+}
+
+function guidePdfMarkup(src, title){
+  if(!src) return '<div class="detail-empty">No PDF guide is available for this factor yet.</div>';
+  const label = title || 'Factor guide';
+  let url = src;
+  try{ url = new URL(src, document.baseURI).href; }catch(e){}
+  const framed = `${url}#toolbar=1&navpanes=0&view=FitH`;
+  return `<div class="guide-pdf">
+    <iframe class="guide-pdf-frame" src="${esc(framed)}" title="${esc(label)}"></iframe>
+    <div class="guide-pdf-actions"><a class="btn ghost guide-pdf-link" href="${esc(url)}" target="_blank" rel="noopener">Open PDF guide ↗</a></div>
+  </div>`;
+}
+
+/* ---------- Inline impact summaries (from PDF guides) ---------- */
 function wireImpactLinks(){
   document.querySelectorAll('#summaryTable .impact-link').forEach(btn=>btn.addEventListener('click',e=>{
     e.preventDefault();
-    const panel = document.getElementById(`explain-${btn.dataset.n}`);
-    if(!panel) return;
-    const isOpen = !panel.classList.contains('hidden');
-    if(!isOpen && !panel.dataset.loaded){
-      const name = panel.dataset.name || 'Factor';
-      const srcs = (panel.dataset.srcs || '').split('|').filter(Boolean);
-      panel.innerHTML = srcs.map((s,i)=>`<img src="${s}" loading="lazy" alt="${name} explanation ${i+1}"/>`).join('');
-      panel.dataset.loaded = 'true';
-    }
-    panel.classList.toggle('hidden', isOpen);
-    btn.setAttribute('aria-expanded', String(!isOpen));
-    btn.textContent = isOpen ? 'Read more' : 'Show less';
+    e.stopPropagation();
+    openFactorModal(+btn.dataset.n);
   }));
 }
 
@@ -1133,8 +1166,8 @@ function esc(s){
 function loadExplanationImages(panel){
   if(!panel || panel.dataset.loaded) return;
   const name = panel.dataset.name || 'Factor';
-  const srcs = (panel.dataset.srcs || '').split('|').filter(Boolean);
-  panel.innerHTML = srcs.map((s,i)=>`<img src="${s}" loading="lazy" alt="${name} explanation ${i+1}"/>`).join('');
+  const guide = panel.dataset.guide || '';
+  panel.innerHTML = guidePdfMarkup(guide, `${name} PDF guide`);
   panel.dataset.loaded = 'true';
 }
 
@@ -2180,13 +2213,11 @@ function openFactorModal(n){
     row.classList.toggle('selected', on);
     row.setAttribute('aria-pressed', String(on));
   });
-  const {f, live, rk, what, im, mapUrl, imgs} = item;
+  const {f, live, rk, what, im, mapUrl, guide} = item;
   const score = live ? `${live.score}/10${live.label.includes('No') ? '' : ' · '+live.label.replace(' Risk','')}` : 'Open map to assess';
-  const explain = imgs.length
-    ? `<div class="detail-explain" id="detailExplain-${f.n}">
-        ${imgs.map((s,i)=>`<img src="${s}" loading="lazy" alt="${f.name} explanation ${i+1}"/>`).join('')}
-       </div>`
-    : `<div class="detail-empty">No explanation images are available for this factor yet.</div>`;
+  const explain = guide
+    ? `<div class="detail-explain" id="detailExplain-${f.n}">${guidePdfMarkup(guide, `${f.name} PDF guide`)}</div>`
+    : `<div class="detail-empty">No PDF guide is available for this factor yet.</div>`;
   $('#xmodalTitle').textContent = `#${f.n} ${f.name}`;
   $('#xmodalBody').innerHTML = `<div class="detail-modal">
     <div class="detail-head">
@@ -2795,7 +2826,7 @@ function goodFactors(liveResults, amen){
 function renderInsights(st, R, census, amen, liveResults){
   amen = amen || baselineAmenityCounts(st);
   const fallbackNote = amen && amen._fallback
-    ? '<p class="snapnote">Showing baseline neighborhood counts because live OpenStreetMap counts did not respond for this run.</p>'
+    ? `<p class="snapnote">${amen._baseline === 'generic' ? 'Showing a conservative neighborhood snapshot estimate because live OpenStreetMap counts did not respond for this run.' : 'Showing baseline neighborhood counts because live OpenStreetMap counts did not respond for this run.'}</p>`
     : '';
   const retail = amen ? amen.eat + amen.shop : null;
   $('#neighborhoodSnapshot').innerHTML = amen ? `<div class="snapgrid">
@@ -3077,21 +3108,22 @@ async function analyze(){
   if(tsunami){ liveResults[46]=tsunami; }
   const airPollution = openWeatherAirPollutionResult(env);
   if(airPollution){ liveResults[27]=airPollution; }
-  Object.assign(liveResults, livabilityResults(amen, census));
+  const amenForReport = amen || baselineAmenityCounts(st);
+  Object.assign(liveResults, livabilityResults(amenForReport, census));
   if(census){ liveResults[1]={label:'No Risk', score:0, desc:`ZIP ${st.zip}: pop ${census.pop}, median income ${census.income}, median home ${census.home}, ${census.bachelors} bachelor's+.`, impacts:{health:IMP('NA','Live Census demographic context, not a health hazard.'),property:IMP('No','Live Census socioeconomic context; not itself a risk.'),insurance:IMP('NA','Not an insurance-pricing factor.')}}; }
 
   // summary view (table) + overall risk score
   renderSummaryTable(st, liveResults);
   STATE._live=liveResults;
   const R = renderOverall(liveResults);
-  renderInsights(st, R, census, amen, liveResults);
+  renderInsights(st, R, census, amenForReport, liveResults);
   renderEnvironment(env);
   const fmt = d => `${d.band} · ${d.score.toFixed(1)}/10`;
   const d = { health: fmt(R.dims.health), prop: fmt(R.dims.property), ins: fmt(R.dims.insurance) }; // used by the PDF cover
   $('#foot').innerHTML=`Generated ${new Date().toLocaleDateString()} · Geocoding & basemap © OpenStreetMap/Nominatim · Demographics: U.S. Census ACS · Flood: FEMA NFHL · Weather: Open-Meteo · Air pollution: OpenWeather. `
     +`Informational screening only — not a substitute for a professional inspection, geotechnical study, or insurance underwriting. Build ${(window.APP_CONFIG||{}).BUILD||'?'} `;
 
-  STATE._dims=d; STATE._census=census; STATE._amen=amen; STATE._env=env; STATE._risk=R;
+  STATE._dims=d; STATE._census=census; STATE._amen=amenForReport; STATE._env=env; STATE._risk=R;
   $('#pdf').disabled=false;
   setStatus(`<span class="ok">✓</span> Analysis completed successfully. Your report is ready for download.`,'ok');
   if(RESUME_PDF_AFTER_DONATION){
@@ -3253,7 +3285,7 @@ async function makePDF(){
     doc.text(title.toUpperCase(), x+8, yy+15);
     (rows || []).slice(0,5).forEach((row,i)=>pctBar(x+8, yy+24+i*19, w-16, row[0], row[1]));
   };
-  const topItems = [...(reportRisk.overall.items||[])].sort((a,b)=>(b.rank??b.v)-(a.rank??a.v) || (b.live?1:0)-(a.live?1:0));
+  const topItems = [...((((reportRisk || {}).overall || {}).items) || [])].filter(Boolean).sort((a,b)=>(b.rank??b.v)-(a.rank??a.v) || (b.live?1:0)-(a.live?1:0));
   const topHigh = topItems.filter(x=>x.level==='High').slice(0,3);
   const topMod = topItems.filter(x=>x.level==='Moderate').slice(0,3);
   const riskRow=(x,yy,w,item,accent)=>{
@@ -3277,7 +3309,7 @@ async function makePDF(){
   }
   if(c){
     y+=8;
-    const prof=[['Population (ZIP)',c.pop],['Median Household Income',c.income],['Median Home Value',c.home],["Bachelor's+ Degree",c.bachelors]];
+    const prof=[['Population (ZIP)',c.pop],['Median Household Income',c.income],['Median Home Value',c.home],["Bachelor's+ Degree",c.bachelors]].filter(Array.isArray);
     const pw=(CW-18)/4;
     prof.forEach(([k,v],i)=>{
       const x=M+i*(pw+6);
@@ -3521,7 +3553,11 @@ async function makePDF(){
     pdfRowIndex += 1;
   };
   appendixHeader();
-  const pdfSections = sectionedSummaryFactors();
+  let pdfSections = [];
+  try{ pdfSections = sectionedSummaryFactors(); }catch(err){ console.warn('PDF sections unavailable', err); }
+  pdfSections = (Array.isArray(pdfSections) ? pdfSections : [])
+    .map(section => ({...(section || {}), factors: Array.isArray(section && section.factors) ? section.factors.filter(Boolean) : []}))
+    .filter(section => section.factors.length);
   drawPdfSectionScoreOverview(pdfSections);
   drawPdfTableHeader();
   pdfSections.forEach(section=>{

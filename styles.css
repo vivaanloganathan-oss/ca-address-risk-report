@@ -418,6 +418,13 @@ tr.flash{animation:rowflash 1.6s ease-out}
 .inline-explain{margin-top:9px;display:flex;flex-direction:column;gap:8px}
 .inline-explain.hidden,.detail-explain.hidden{display:none}
 .inline-explain img{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(16,27,45,.04)}
+.guide-pdf{margin-top:8px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(16,27,45,.04)}
+.guide-pdf-frame{display:block;width:100%;height:560px;border:0;background:#f8fafd}
+.inline-explain .guide-pdf-frame{height:520px}
+.detail-explain .guide-pdf-frame{height:min(68vh,760px);min-height:560px}
+.guide-pdf-actions{display:flex;justify-content:flex-end;gap:8px;padding:8px;border-top:1px solid var(--line);background:#f8fafd}
+.guide-pdf-link{font-size:11.5px;padding:7px 10px}
+@media(max-width:760px){.guide-pdf-frame,.inline-explain .guide-pdf-frame,.detail-explain .guide-pdf-frame{height:420px;min-height:420px}}
 .xmodal{position:fixed;inset:0;background:rgba(15,27,45,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:22px}
 .xmodal.hidden{display:none}
 .xmodal-card{background:#fff;border-radius:16px;max-width:960px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
