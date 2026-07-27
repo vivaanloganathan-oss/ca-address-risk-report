@@ -1774,11 +1774,11 @@ function openPowerlineMapModal(){
       <div class="detail-section-title">High-voltage powerline screening map</div>
       <div class="detail-desc">ArcGIS powerline map centered on ${esc(addr)}. Use this to screen nearby transmission corridors and verify line ownership, voltage, easements, and setbacks with official utility or agency sources.</div>
       <div class="arcgis-location-wrap">
-        ${arcgisIframe('c2a07983f4ec44e5b1379263e1eb7595', center, '2311162.2171545', 'ArcGIS map')}
+        ${arcgisIframe('e8a662f7b6b5430eb3d8366bd9831a97', center, '18489297.737236', 'ArcGIS map')}
         ${arcgisLocationOverlay(addr)}
       </div>
       <div class="detail-actions">
-        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=c2a07983f4ec44e5b1379263e1eb7595&center=${center}&level=8" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
+        <a class="btn ghost detail-map" href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=e8a662f7b6b5430eb3d8366bd9831a97&center=${center}&level=5" target="_blank" rel="noopener">Open full ArcGIS map ↗</a>
       </div>
     </div>
   </div>`;
