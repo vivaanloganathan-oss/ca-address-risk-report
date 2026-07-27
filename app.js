@@ -3356,11 +3356,11 @@ async function makePDF(){
     return fill(f.map || '', STATE);
   };
   const levelTag=(x,yy,val)=>{
-    const t=String(val||'NA'); doc.setFontSize(6.8); doc.setFont('helvetica','bold');
-    const w=Math.min(48, doc.getTextWidth(t)+10);
+    const t=String(val||'NA'); doc.setFontSize(7.1); doc.setFont('helvetica','bold');
+    const w=Math.min(52, doc.getTextWidth(t)+12);
     const c=LVLPDF[val]||LVLPDF['NA'];
-    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,12,3,3,'FD');
-    doc.setTextColor(...c[2]); doc.text(t,x+5,yy+8.3); return w;
+    doc.setFillColor(...c[0]); doc.setDrawColor(...c[1]); doc.roundedRect(x,yy,w,13,3,3,'FD');
+    doc.setTextColor(...c[2]); doc.text(t,x+6,yy+9); return w;
   };
   const appendixHeader=()=>{
     doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
@@ -3384,21 +3384,41 @@ async function makePDF(){
     }
   };
   const drawPdfTableHeader = () => {
-    if(y + 24 > H - 56){ doc.addPage(); y=M+6; appendixHeader(); }
-    doc.setFillColor(18,29,48); doc.rect(M,y,CW,22,'F');
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
-    pdfCols.forEach(c=>doc.text(c.label, c.x+4, y+14));
-    y += 22;
-  };
-  const drawPdfSection = (title, nextRowH=0) => {
-    ensurePdfSpace(nextRowH ? 22 + nextRowH : 24);
-    doc.setFillColor(219,230,245); doc.setDrawColor(200,214,234); doc.rect(M,y,CW,22,'FD');
-    doc.setTextColor(37,54,79); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
-    doc.text(String(title || 'Other').toUpperCase(), M+6, y+14);
-    y += 22;
+    if(y + 30 > H - 56){ doc.addPage(); y=M+6; appendixHeader(); }
+    doc.setFillColor(18,29,48); doc.roundedRect(M,y,CW,28,7,7,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8.8);
+    pdfCols.forEach(c=>doc.text(c.label, c.x+6, y+18));
+    y += 28;
   };
   let pdfRowIndex = 0;
   const impactText = impact => cleanPdfText(`${impact.level || 'NA'}: ${impact.why || 'No additional detail returned for this address.'}`);
+  const rowRiskForPdf = f => {
+    const lv=live[f.n];
+    if(lv && Number.isFinite(Number(lv.score))) return Number(lv.score);
+    const im=effImpact(f,lv);
+    return Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
+  };
+  const sectionScoreForPdf = section => {
+    const scores=(section.factors||[]).map(rowRiskForPdf).filter(v=>Number.isFinite(v));
+    return scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
+  };
+  const drawPdfSection = (section, nextRowH=0) => {
+    const title = typeof section === 'string' ? section : section.title;
+    const score = typeof section === 'string' ? null : sectionScoreForPdf(section);
+    const band = score == null ? 'NA' : bandOf(score);
+    ensurePdfSpace(nextRowH ? 30 + nextRowH : 32);
+    doc.setFillColor(207,226,248); doc.setDrawColor(184,210,239); doc.rect(M,y,CW,30,'FD');
+    doc.setTextColor(31,54,88); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text(String(title || 'Other').toUpperCase(), M+8, y+19);
+    const scoreText = score == null ? 'No score' : `${score.toFixed(1)}/10 · ${band}`;
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.6);
+    const sw = doc.getTextWidth(scoreText)+16;
+    const sx = M+CW-sw-8;
+    const sc = LVLPDF[band] || LVLPDF['NA'];
+    doc.setFillColor(...sc[0]); doc.setDrawColor(...sc[1]); doc.roundedRect(sx,y+7,sw,16,8,8,'FD');
+    doc.setTextColor(...sc[2]); doc.text(scoreText, sx+8, y+18);
+    y += 30;
+  };
   const estimatePdfRowHeight = f => {
     const lv=live[f.n];
     const im=effImpact(f,lv);
@@ -3410,7 +3430,7 @@ async function makePDF(){
     const insuranceLines=doc.splitTextToSize(impactText(im.insurance), pdfCols[4].w-8);
     const linkLines=doc.splitTextToSize('Open map', pdfCols[5].w-8);
     const maxLines=Math.max(factorLines.length, whatLines.length, healthLines.length+1, propertyLines.length+1, insuranceLines.length+1, linkLines.length);
-    return Math.max(42, 12 + maxLines*7.2);
+    return Math.max(54, 16 + maxLines*8.2);
   };
   const drawPdfTableRow = f => {
     const lv=live[f.n];
@@ -3424,24 +3444,24 @@ async function makePDF(){
     const insuranceLines=doc.splitTextToSize(impactText(im.insurance), pdfCols[4].w-8);
     const linkLines=doc.splitTextToSize('Open map', pdfCols[5].w-8);
     const maxLines=Math.max(factorLines.length, whatLines.length, healthLines.length+1, propertyLines.length+1, insuranceLines.length+1, linkLines.length);
-    const rowH=Math.max(42, 12 + maxLines*7.2);
+    const rowH=Math.max(54, 16 + maxLines*8.2);
     ensurePdfSpace(rowH);
     const fill = pdfRowIndex % 2 ? [248,250,253] : [255,255,255];
     doc.setFillColor(...fill); doc.setDrawColor(226,231,238); doc.rect(M,y,CW,rowH,'FD');
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.4); doc.setTextColor(20,28,46);
-    doc.text(factorLines, pdfCols[0].x+4, y+10);
-    doc.setFont('helvetica','normal'); doc.setFontSize(7.1); doc.setTextColor(43,57,77);
-    doc.text(whatLines, pdfCols[1].x+4, y+10);
-    levelTag(pdfCols[2].x+4, y+5, im.health.level);
-    levelTag(pdfCols[3].x+4, y+5, im.property.level);
-    levelTag(pdfCols[4].x+4, y+5, im.insurance.level);
-    doc.setFont('helvetica','normal'); doc.setFontSize(6.8); doc.setTextColor(43,57,77);
-    doc.text(healthLines, pdfCols[2].x+4, y+22);
-    doc.text(propertyLines, pdfCols[3].x+4, y+22);
-    doc.text(insuranceLines, pdfCols[4].x+4, y+22);
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.2); doc.setTextColor(49,112,246);
-    doc.text(linkLines, pdfCols[5].x+4, y+10);
-    if(url) doc.link(pdfCols[5].x+4, y+2, pdfCols[5].w-8, 16, {url});
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.9); doc.setTextColor(20,28,46);
+    doc.text(factorLines, pdfCols[0].x+6, y+13);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.4); doc.setTextColor(71,84,104);
+    doc.text(whatLines, pdfCols[1].x+6, y+13);
+    levelTag(pdfCols[2].x+6, y+8, im.health.level);
+    levelTag(pdfCols[3].x+6, y+8, im.property.level);
+    levelTag(pdfCols[4].x+6, y+8, im.insurance.level);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.1); doc.setTextColor(71,84,104);
+    doc.text(healthLines, pdfCols[2].x+6, y+26);
+    doc.text(propertyLines, pdfCols[3].x+6, y+26);
+    doc.text(insuranceLines, pdfCols[4].x+6, y+26);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.8); doc.setTextColor(18,104,255);
+    doc.text(linkLines, pdfCols[5].x+6, y+13);
+    if(url) doc.link(pdfCols[5].x+6, y+5, pdfCols[5].w-12, 18, {url});
     pdfCols.slice(1).forEach(c=>{ doc.setDrawColor(234,238,245); doc.line(c.x,y,c.x,y+rowH); });
     y += rowH;
     pdfRowIndex += 1;
@@ -3450,7 +3470,7 @@ async function makePDF(){
   drawPdfTableHeader();
   sectionedSummaryFactors().forEach(section=>{
     const firstRowH = section.factors[0] ? estimatePdfRowHeight(section.factors[0]) : 0;
-    drawPdfSection(section.title, firstRowH);
+    drawPdfSection(section, firstRowH);
     section.factors.forEach(drawPdfTableRow);
   });
 
