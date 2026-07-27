@@ -1061,7 +1061,7 @@ function renderSummaryTable(st, liveResults){
     sectionScoreRings.innerHTML = summarySectionScores.map(s=>{
       const pct = Math.max(0, Math.min(100, s.score * 10));
       return `<article class="section-score-card">
-        <div class="section-score-ring" style="--pct:${pct.toFixed(1)}"><b>${s.score.toFixed(1)}</b></div>
+        <div class="section-score-ring" style="--pct:${pct.toFixed(1)}%"><b>${s.score.toFixed(1)}</b></div>
         <div class="section-score-copy"><h3>${esc(s.title)}</h3><p>${s.band} score</p></div>
       </article>`;
     }).join('');
@@ -3431,6 +3431,24 @@ async function makePDF(){
       return display ? {title:section.title, ...display} : null;
     }).filter(Boolean);
     if(!scores.length) return;
+    const drawPdfScoreRing = (cx, cy, r, pct) => {
+      const safePct = Math.max(0, Math.min(1, pct || 0));
+      doc.setDrawColor(232,238,247);
+      doc.setLineWidth(4.6);
+      doc.circle(cx, cy, r, 'S');
+      if(safePct > 0){
+        doc.setDrawColor(49,112,246);
+        const start = -Math.PI / 2;
+        const end = start + Math.PI * 2 * safePct;
+        const steps = Math.max(8, Math.ceil(48 * safePct));
+        for(let i=0; i<steps; i++){
+          const a1 = start + (end - start) * (i / steps);
+          const a2 = start + (end - start) * ((i + 1) / steps);
+          doc.line(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, cx + Math.cos(a2) * r, cy + Math.sin(a2) * r);
+        }
+      }
+      doc.setLineWidth(1);
+    };
     ensurePdfSpace(96);
     doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
     doc.text('Section scores', M, y);
@@ -3439,7 +3457,7 @@ async function makePDF(){
     scores.slice(0,3).forEach((s,i)=>{
       const x=M+i*(cardW+gap);
       doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(x,y,cardW,cardH,7,7,'FD');
-      doc.setDrawColor(49,112,246); doc.setLineWidth(4.6); doc.circle(x+26,y+29,17,'S'); doc.setLineWidth(1);
+      drawPdfScoreRing(x+26, y+29, 17, s.score / 10);
       doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,28,46);
       doc.text(s.score.toFixed(1), x+26, y+32, {align:'center'});
       doc.setFontSize(9.8); doc.text(String(s.title || ''), x+52, y+24);
