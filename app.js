@@ -3160,18 +3160,6 @@ async function makePDF(){
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(157,180,214);
   doc.text(`ZIP ${STATE.zip||'n/a'}   -   ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}   -   ${new Date().toLocaleDateString()}   -   ${FACTORS.length} factors`, M, 154);
   let y=202;
-  doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.roundedRect(M,y,CW,74,8,8,'FD');
-  doc.setFillColor(239,246,255); doc.roundedRect(M+12,y+14,92,32,16,16,'F');
-  doc.setTextColor(49,112,246); doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.text(`ZIP ${STATE.zip||'n/a'}`, M+30, y+35);
-  doc.setTextColor(20,28,46); doc.setFontSize(12);
-  doc.text('Location Snapshot', M+122, y+25);
-  doc.setFont('helvetica','normal'); doc.setTextColor(90,107,128); doc.setFontSize(9.5);
-  const meta = c
-    ? `Population ${c.pop}  -  Median income ${c.income}  -  Median home ${c.home}  -  Bachelor's+ ${c.bachelors}`
-    : `Coordinates ${(+STATE.lat).toFixed(5)}, ${(+STATE.lon).toFixed(5)}  -  Public agency and neighborhood data`;
-  doc.text(doc.splitTextToSize(meta, CW-148), M+122, y+45);
-  y+=92;
   doc.setFillColor(255,255,255); doc.setDrawColor(220,227,236); doc.roundedRect(M,y,CW,304,9,9,'FD');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(90,107,128);
   doc.text('ADDRESS MAP', M+14, y+20);
@@ -3372,16 +3360,16 @@ async function makePDF(){
     doc.text('Full Search Output', M, y); y+=8;
     doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=13;
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
-    doc.text(doc.splitTextToSize('Complete report output grouped the same way as the on-page analysis. Each factor shows the same columns as the table: factor, what it is, health, property value, insurance, and source.', CW), M, y);
+    doc.text(doc.splitTextToSize('Complete report output grouped the same way as the on-page analysis. Each factor shows the same columns as the table: factor, what it is, health, property value, insurance, and links.', CW), M, y);
     y+=24;
   };
   const pdfCols = [
-    {key:'factor', label:'Factor', x:M, w:86},
-    {key:'what', label:'What it is', x:M+86, w:136},
-    {key:'health', label:'Health impact', x:M+222, w:96},
-    {key:'property', label:'Property value', x:M+318, w:96},
-    {key:'insurance', label:'Insurance', x:M+414, w:86},
-    {key:'source', label:'Source', x:M+500, w:CW-500}
+    {key:'factor', label:'Factor', x:M, w:82},
+    {key:'what', label:'What it is', x:M+82, w:134},
+    {key:'health', label:'Health impact', x:M+216, w:88},
+    {key:'property', label:'Property value impact', x:M+304, w:94},
+    {key:'insurance', label:'Insurance impact', x:M+398, w:86},
+    {key:'links', label:'Links', x:M+484, w:CW-484}
   ];
   const ensurePdfSpace = needed => {
     if(y + needed > H - 56){
@@ -3414,8 +3402,8 @@ async function makePDF(){
     const healthLines=doc.splitTextToSize(impactText(im.health), pdfCols[2].w-8);
     const propertyLines=doc.splitTextToSize(impactText(im.property), pdfCols[3].w-8);
     const insuranceLines=doc.splitTextToSize(impactText(im.insurance), pdfCols[4].w-8);
-    const sourceLines=doc.splitTextToSize(url || 'Open report map/source', pdfCols[5].w-8);
-    const maxLines=Math.max(factorLines.length, whatLines.length, healthLines.length+1, propertyLines.length+1, insuranceLines.length+1, sourceLines.length);
+    const linkLines=doc.splitTextToSize('Open map', pdfCols[5].w-8);
+    const maxLines=Math.max(factorLines.length, whatLines.length, healthLines.length+1, propertyLines.length+1, insuranceLines.length+1, linkLines.length);
     const rowH=Math.max(42, 12 + maxLines*7.2);
     ensurePdfSpace(rowH);
     const fill = pdfRowIndex % 2 ? [248,250,253] : [255,255,255];
@@ -3431,8 +3419,9 @@ async function makePDF(){
     doc.text(healthLines, pdfCols[2].x+4, y+22);
     doc.text(propertyLines, pdfCols[3].x+4, y+22);
     doc.text(insuranceLines, pdfCols[4].x+4, y+22);
-    doc.setFontSize(6.6); doc.setTextColor(90,107,128);
-    doc.text(sourceLines, pdfCols[5].x+4, y+10);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.2); doc.setTextColor(49,112,246);
+    doc.text(linkLines, pdfCols[5].x+4, y+10);
+    if(url) doc.link(pdfCols[5].x+4, y+2, pdfCols[5].w-8, 16, {url});
     pdfCols.slice(1).forEach(c=>{ doc.setDrawColor(234,238,245); doc.line(c.x,y,c.x,y+rowH); });
     y += rowH;
     pdfRowIndex += 1;
