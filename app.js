@@ -1071,7 +1071,10 @@ function renderSummaryTable(st, liveResults){
     const sectionScore = sectionScores.length ? sectionScores.reduce((a,b)=>a+b,0)/sectionScores.length : null;
     const displaySection = reversedSectionScore(sectionScore);
     if(displaySection) summarySectionScores.push({title:section.title, ...displaySection});
-    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6"><span class="section-title-text">${esc(section.title)}</span></td></tr>${sectionRows}`;
+    const sectionScoreMarkup = displaySection
+      ? `<span class="section-row-score"><span class="section-row-score-value">${displaySection.score.toFixed(1)}/10</span><span class="section-row-score-band">${esc(displaySection.band)}</span></span>`
+      : '';
+    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6"><div class="section-title-line"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreMarkup}</div></td></tr>${sectionRows}`;
   }).join('');
   let sectionScoreRings = $('#sectionScoreRings');
   const summaryTable = $('#summaryTable');
@@ -3418,12 +3421,7 @@ async function makePDF(){
     doc.setTextColor(...c[2]); doc.text(t,x+6,yy+9); return w;
   };
   const appendixHeader=()=>{
-    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,28,46);
-    doc.text('Full Search Output', M, y); y+=8;
-    doc.setDrawColor(20,28,46); doc.setLineWidth(1.5); doc.line(M,y,W-M,y); doc.setLineWidth(1); y+=13;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,107,128);
-    doc.text(doc.splitTextToSize('Complete report output grouped the same way as the on-page analysis. Each factor shows the same columns as the table: factor, what it is, health, property value, insurance, and links.', CW), M, y);
-    y+=24;
+    y += 0;
   };
   const pdfCols = [
     {key:'factor', label:'Factor', x:M, w:82},
