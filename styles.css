@@ -220,9 +220,10 @@ table.sumtable tbody tr:hover{background:#f7faff}
 table.sumtable tbody tr.selected{background:#eef5ff;box-shadow:inset 4px 0 0 var(--accent)}
 table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35);outline-offset:-2px}
 .sumtable .num{color:var(--muted);font-weight:700;width:30px}
-.detail-arrow{appearance:none;border:0;background:#eaf1ff;color:var(--accent);border-radius:8px;width:27px;height:27px;display:inline-grid;place-items:center;font-size:18px;line-height:1;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:inset 0 0 0 1px #cfe0ff}
-.detail-arrow:hover{background:var(--accent);color:#fff;box-shadow:none}
-.detail-arrow:focus{outline:2px solid rgba(47,109,246,.35);outline-offset:2px}
+.sumtable .read-more-cell{font-weight:900;white-space:nowrap}
+.detail-read-more{appearance:none;border:0;background:transparent;color:var(--accent);font:inherit;font-weight:900;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0;white-space:nowrap}
+.detail-read-more:hover{color:#004bd6;text-decoration-thickness:2px}
+.detail-read-more:focus{outline:2px solid rgba(47,109,246,.35);outline-offset:3px;border-radius:4px}
 .map-embed-open{appearance:none;border:0;background:transparent;font:inherit;cursor:pointer;padding:0}
 .detail-section.no-top{border-top:0;margin-top:0;padding-top:0}
 .sumtable .fname{font-weight:700;color:var(--ink);white-space:nowrap}
@@ -232,7 +233,7 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
 .sumtable .impcell .lvl{margin-bottom:4px}
 .sumtable .impcell .w{display:block;color:#475468;font-size:11px;line-height:1.4}
 .sumtable .rk{font-weight:800;white-space:nowrap}
-.link-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.link-actions{display:flex;align-items:center;justify-content:flex-start;gap:10px}
 @media(max-width:760px){
   table.sumtable{display:block;min-width:0;border-collapse:separate;border-spacing:0;background:transparent;font-size:13px}
   table.sumtable colgroup,table.sumtable thead{display:none}
@@ -249,6 +250,7 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
   table.sumtable tr.summary-row td:nth-child(5):before{content:"Property value impact"}
   table.sumtable tr.summary-row td:nth-child(6):before{content:"Insurance impact"}
   table.sumtable tr.summary-row td:nth-child(7):before{content:"Links"}
+  table.sumtable tr.summary-row td:nth-child(8):before{content:"Read more"}
   table.sumtable .summary-section-row{display:block;margin:18px 0 8px}
   table.sumtable .summary-section-row td{display:block;border:1px solid #b7dec8;border-radius:14px;padding:15px 14px;font-size:18px}
   table.sumtable tbody tr:hover{background:transparent}
@@ -257,8 +259,9 @@ table.sumtable tbody tr.summary-row:focus{outline:2px solid rgba(47,109,246,.35)
   .section-title-line{align-items:flex-start}
   .section-row-score{padding:6px 10px;font-size:12px}
   .section-row-score-value{font-size:14px}
-  .link-actions{justify-content:space-between}
+  .link-actions{justify-content:flex-start}
   .sumtable .rk{white-space:normal}
+  .sumtable .read-more-cell{white-space:normal}
 }
 .rk-no{color:var(--no)}.rk-low{color:var(--low)}.rk-mod{color:var(--mod)}.rk-high{color:var(--high)}.rk-pending{color:#8a98ab}
 .rk .rk-link{appearance:none;background:transparent;border:0;border-bottom:1px solid currentColor;color:#1268ff;cursor:pointer;font:inherit;font-weight:900;padding:0;text-decoration:none}
@@ -507,6 +510,11 @@ tr.flash{animation:rowflash 1.6s ease-out}
 /* ---------- Top risks lists (replaces gauge/score) ---------- */
 .riskcol{display:flex;flex-direction:column;gap:12px}
 @media(min-width:860px){.riskcol{display:flex}}
+.risk-priority-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 18px;border:1px solid #cfe0ff;border-radius:14px;background:linear-gradient(135deg,#eef5ff 0%,#f8fbff 100%);box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.risk-priority-head span{display:block;margin-bottom:4px;color:var(--accent);font-size:10px;font-weight:950;letter-spacing:.9px;text-transform:uppercase}
+.risk-priority-head h3{margin:0;color:var(--ink);font-size:18px;line-height:1.15;font-weight:950}
+.risk-priority-head p{margin:2px 0 0;max-width:380px;color:#53627a;font-size:12px;line-height:1.45;font-weight:700}
+@media(max-width:680px){.risk-priority-head{display:block;padding:14px}.risk-priority-head p{margin-top:8px;max-width:none}}
 .topriskgrid{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:1080px){.topriskgrid{grid-template-columns:1fr 1fr}}
 .driver.none{color:var(--muted);cursor:default;border-style:dashed;background:#fafbfd}

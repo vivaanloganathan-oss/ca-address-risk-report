@@ -995,7 +995,7 @@ function renderSummaryTable(st, liveResults){
     const what=((live&&live.desc)?live.desc:f.detail) + localNote;
     const im=effImpact(f,live);
     const mapUrl = f.n === 3 ? communityCrimeMapUrl(st) : fill(f.map, st);
-    const detailBtn = `<button class="detail-arrow" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">➜</button>`;
+    const detailBtn = `<button class="detail-read-more" type="button" data-detail="${f.n}" aria-label="Open details for ${f.name}">Read more</button>`;
     const mapAction = f.n === 3
       ? `<button class="rk-link map-open crime-map-open" type="button" data-crime-map="3">Open map</button>`
       : f.n === 5
@@ -1055,7 +1055,7 @@ function renderSummaryTable(st, liveResults){
                 : [40,41].includes(f.n)
                   ? `<button class="rk-link map-open transportation-map-open" type="button" data-transportation-map="${f.n}">Open map</button>`
                   : `<a class="rk-link map-open" href="${mapUrl}" target="_blank" rel="noopener">Open map</a>`;
-    const links = `<span class="link-actions">${mapAction}${detailBtn}</span>`;
+    const links = `<span class="link-actions">${mapAction}</span>`;
     const rowRisk = live ? live.score
       : Math.max(0, ...['health','property','insurance'].map(k=>LVLNUM[im[k].level] ?? 0));
     if(Number.isFinite(Number(rowRisk))) sectionScores.push(Number(rowRisk));
@@ -1067,6 +1067,7 @@ function renderSummaryTable(st, liveResults){
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
       <td class="rk rk-${rk}">${links}</td>
+      <td class="read-more-cell">${detailBtn}</td>
     </tr>`;
     }).join('');
     const sectionScore = sectionScores.length ? sectionScores.reduce((a,b)=>a+b,0)/sectionScores.length : null;
@@ -1075,7 +1076,7 @@ function renderSummaryTable(st, liveResults){
     const sectionScoreMarkup = displaySection
       ? `<span class="section-row-score"><span class="section-row-score-value">${displaySection.score.toFixed(1)}/10</span></span>`
       : '';
-    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="7"><div class="section-title-line"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreMarkup}</div></td></tr>${sectionRows}`;
+    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="8"><div class="section-title-line"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreMarkup}</div></td></tr>${sectionRows}`;
   }).join('');
   let sectionScoreRings = $('#sectionScoreRings');
   const summaryTable = $('#summaryTable');
@@ -1096,10 +1097,10 @@ function renderSummaryTable(st, liveResults){
   }
   $('#summaryTable').innerHTML =
     `<colgroup><col class="c-num"><col class="c-fac"><col class="c-what">
-       <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
+       <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"><col class="c-read"></colgroup>
      <thead><tr>
        <th>#</th><th>Factor</th><th>What it is</th>
-       <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
+       <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th><th>Read more</th>
      </tr></thead><tbody>${rows}</tbody>`;
   buildGlanceControls();
   wireImpactLinks();
@@ -2270,7 +2271,7 @@ function selectVisibleFactor(){
 }
 
 function wireSummaryRows(){
-  document.querySelectorAll('#summaryTable .detail-arrow').forEach(btn=>{
+  document.querySelectorAll('#summaryTable [data-detail]').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       openFactorModal(+btn.dataset.detail);
