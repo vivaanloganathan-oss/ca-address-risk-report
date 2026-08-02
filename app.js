@@ -1062,6 +1062,7 @@ function renderSummaryTable(st, liveResults){
     const guide = guidePdfForFactor(f);
     SUMMARY_ITEMS[f.n] = {f, live, rk, what, im, mapUrl, links, rowRisk, guide};
     return `<tr id="sumrow-${f.n}" class="summary-row" data-factor-row="true" data-section="${esc(section.title)}" data-order="${rowOrder}" data-cat="${cat}" data-name="${(f.name+' '+cat).toLowerCase()}" data-risk="${rowRisk}">
+      <td class="num">${f.n}</td>
       <td><div class="fname">${f.name}${live?' <span class="livechip">LIVE</span>':''}</div><div class="fcat">${cat}</div></td>
       <td class="what">${whatCell(f, what)}</td>
       ${cell(im.health)}${cell(im.property)}${cell(im.insurance)}
@@ -1072,9 +1073,9 @@ function renderSummaryTable(st, liveResults){
     const displaySection = reversedSectionScore(sectionScore);
     if(displaySection) summarySectionScores.push({title:section.title, ...displaySection});
     const sectionScoreMarkup = displaySection
-      ? `<span class="section-row-score"><span class="section-row-score-value">${displaySection.score.toFixed(1)}/10</span><span class="section-row-score-band">${esc(displaySection.band)}</span></span>`
+      ? `<span class="section-row-score"><span class="section-row-score-value">${displaySection.score.toFixed(1)}/10</span></span>`
       : '';
-    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="6"><div class="section-title-line"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreMarkup}</div></td></tr>${sectionRows}`;
+    return `<tr class="summary-section-row" data-section-heading="${esc(section.title)}"><td colspan="7"><div class="section-title-line"><span class="section-title-text">${esc(section.title)}</span>${sectionScoreMarkup}</div></td></tr>${sectionRows}`;
   }).join('');
   let sectionScoreRings = $('#sectionScoreRings');
   const summaryTable = $('#summaryTable');
@@ -1094,10 +1095,10 @@ function renderSummaryTable(st, liveResults){
     }).join('');
   }
   $('#summaryTable').innerHTML =
-    `<colgroup><col class="c-fac"><col class="c-what">
+    `<colgroup><col class="c-num"><col class="c-fac"><col class="c-what">
        <col class="c-imp"><col class="c-imp"><col class="c-imp"><col class="c-rk"></colgroup>
      <thead><tr>
-       <th>Factor</th><th>What it is</th>
+       <th>#</th><th>Factor</th><th>What it is</th>
        <th>Health impact</th><th>Property&nbsp;Value impact</th><th>Insurance impact</th><th>Links</th>
      </tr></thead><tbody>${rows}</tbody>`;
   buildGlanceControls();
